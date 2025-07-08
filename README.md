@@ -2,7 +2,7 @@
 
 ## 📁 Repository Structure
 ```plaintext
-your-repo/
+Loqal/
 ├── apps/
 │   ├── android/
 │   │   ├── customer-app/
