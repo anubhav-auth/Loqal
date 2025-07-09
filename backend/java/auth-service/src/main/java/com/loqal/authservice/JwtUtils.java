@@ -1,5 +1,7 @@
 package com.loqal.authservice;
 
+import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +18,20 @@ import java.util.Map;
 public class JwtUtils {
 
 
-    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor("TaK+HaV^uvCHEFsEVfypW#7g9^k*Z8$V".getBytes());
+//    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor("TaK+HaV^uvCHEFsEVfypW#7g9^k*Z8$V".getBytes());
+
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.access-token-expiration}")
+    private long accessTokenExpiration;
+
+    @Getter
+    @Value("${jwt.refresh-token-expiration}")
+    private long refreshTokenExpiration;
 
     private SecretKey getSigningKey() {
-        return SECRET_KEY;
+        return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
 
@@ -44,19 +56,24 @@ public class JwtUtils {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(String username) {
+    public String generateAccessToken(String username) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username);
+        return createToken(claims, username, accessTokenExpiration);
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    public String generateRefreshToken(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        return createToken(claims, username, refreshTokenExpiration);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject, long expirationTime) {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
-                .header().empty().add("typ","JWT")
+                .header().empty().add("typ", "JWT")
                 .and()
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 60 minutes expiration time
+                .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey())
                 .compact();
     }

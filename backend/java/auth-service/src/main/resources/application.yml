@@ -15,3 +15,8 @@ spring:
 springdoc:
   api-docs.path: /custom-docs
   swagger-ui.path: /custom-ui.html
+
+jwt:
+  secret: ${JWT_SECRET:TaK+HaV^uvCHEFsEVfypW#7g9^k*Z8$V}
+  access-token-expiration: 3600000 # 60 minutes in milliseconds
+  refresh-token-expiration: 604800000 # 7 days in milliseconds

@@ -5,20 +5,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+
+import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Optional;
 
 @Tag(name = "Authentication", description = "Authentication management operations")
 @RestController
@@ -37,20 +38,33 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     @Operation(summary = "User login", description = "Authenticates a user and returns a JWT token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully authenticated"),
             @ApiResponse(responseCode = "400", description = "Invalid request body"),
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
-            Authentication auth = authManager.authenticate(
+            authManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
-            String token = jwtUtils.generateToken(request.email());
-            return ResponseEntity.ok(new AuthResponse(token));
+            String accessToken = jwtUtils.generateAccessToken(request.email());
+            String refreshToken = jwtUtils.generateRefreshToken(request.email());
+
+            // Save refresh token to database
+            RefreshToken dbToken = new RefreshToken();
+            dbToken.setToken(refreshToken);
+            dbToken.setEmail(request.email());
+            dbToken.setExpiration(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpiration()));
+            refreshTokenRepository.save(dbToken);
+
+            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid email or password"));
@@ -65,19 +79,26 @@ public class AuthController {
     })
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        if (userCredentialRepository.findByEmail(request.email()).isPresent()) {
+        try {
+            if (userCredentialRepository.findByEmail(request.email()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Email already registered"));
+            }
+
+            UserCredential user = new UserCredential();
+            user.setEmail(request.email());
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+            userCredentialRepository.save(user);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("message", "User registered successfully"));
+        } catch (DataIntegrityViolationException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "Email already registered"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
         }
-
-        UserCredential user = new UserCredential();
-        user.setId(UUID.randomUUID());
-        user.setEmail(request.email());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        userCredentialRepository.save(user);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "User registered successfully"));
     }
 
     @Operation(summary = "Refresh JWT token", description = "Generates a new JWT token using a valid existing token")
@@ -93,18 +114,31 @@ public class AuthController {
                     .body(Map.of("error", "Invalid token format"));
         }
 
-        String jwt = authHeader.substring(7);
+        String refreshToken = authHeader.substring(7);
         try {
-            String username = jwtUtils.extractUsername(jwt);
-            if (jwtUtils.isTokenExpired(jwt)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Token is expired"));
+            Optional<RefreshToken> dbToken = refreshTokenRepository.findByToken(refreshToken);
+            if (dbToken.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid refresh token"));
             }
-            String newToken = jwtUtils.generateToken(username);
-            return ResponseEntity.ok(new AuthResponse(newToken));
+            String username = jwtUtils.extractUsername(refreshToken);
+            if (jwtUtils.isTokenExpired(refreshToken)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Refresh token is expired"));
+            }
+            String newAccessToken = jwtUtils.generateAccessToken(username);
+            String newRefreshToken = jwtUtils.generateRefreshToken(username);
+
+            // Update refresh token in database
+            RefreshToken token = dbToken.get();
+            token.setToken(newRefreshToken);
+            token.setExpiration(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpiration()));
+            refreshTokenRepository.save(token);
+
+            return ResponseEntity.ok(new AuthResponse(newAccessToken, newRefreshToken));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid token"));
+                    .body(Map.of("error", "Invalid refresh token"));
         }
     }
 }
@@ -129,5 +163,4 @@ record RegisterRequest(
         String password
 ) {}
 
-// DTO for authentication response
-record AuthResponse(String token) {}
+record AuthResponse(String accessToken, String refreshToken) {}
