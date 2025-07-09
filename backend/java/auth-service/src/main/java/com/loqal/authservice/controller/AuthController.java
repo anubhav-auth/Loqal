@@ -48,8 +48,20 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Invalid or expired token"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
+
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
         return authService.refreshToken(authHeader);
+    }
+
+    @Operation(summary = "Validate JWT token", description = "Validates a JWT token and checks if it is still valid")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token is valid"),
+            @ApiResponse(responseCode = "400", description = "Invalid token format"),
+            @ApiResponse(responseCode = "401", description = "Invalid or expired token")
+    })
+    @PostMapping("/validate-token")
+    public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String authHeader) {
+        return authService.validateToken(authHeader);
     }
 }

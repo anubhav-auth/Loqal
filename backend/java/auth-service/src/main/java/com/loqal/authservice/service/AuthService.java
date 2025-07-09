@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +40,8 @@ public class AuthService {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+    @Autowired
+    private UserDetailServiceImpl userDetailServiceImpl;
 
     public ResponseEntity<?> login(LoginRequest request) {
         try {
@@ -123,6 +126,43 @@ public class AuthService {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid refresh token"));
+        }
+    }
+
+    public ResponseEntity<?> validateToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid token format"));
+        }
+
+        String token = authHeader.substring(7);
+        try {
+            // Check if the token is a refresh token
+            Optional<RefreshToken> dbToken = refreshTokenRepository.findByToken(token);
+            if (dbToken.isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Refresh token cannot be used for validation"));
+            }
+
+            String username = jwtUtils.extractUsername(token);
+            UserDetails userDetails = userDetailServiceImpl.loadUserByUsername(username);
+
+            // Optionally, verify token expiration matches access token duration
+            long expirationMillis = jwtUtils.extractExpiration(token).getTime() - System.currentTimeMillis();
+            if (expirationMillis > jwtUtils.getRefreshTokenExpiration()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Token does not match access token characteristics"));
+            }
+
+            if (jwtUtils.validateToken(token, userDetails)) {
+                return ResponseEntity.ok(Map.of("message", "Token is valid"));
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid or expired token"));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid token"));
         }
     }
 }
