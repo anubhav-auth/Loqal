@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @Tag(name = "Authentication", description = "Authentication management operations")
 @RestController
 @RequestMapping("/auth")
@@ -67,5 +69,37 @@ public class AuthController {
     @PostMapping("/validate-token")
     public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String authHeader) {
         return authService.validateToken(authHeader);
+    }
+
+    @Operation(summary = "Initiate Google OAuth login", description = "Generates a redirect URL for Google OAuth authentication")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Redirect URL generated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid provider")
+    })
+    @GetMapping("/login")
+    public ResponseEntity<?> initiateGoogleLogin() {
+        return authService.initiateOAuthLogin("google");
+    }
+
+    @Operation(summary = "Handle Google OAuth callback", description = "Processes Google OAuth callback and generates JWT tokens")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully authenticated via Google OAuth"),
+            @ApiResponse(responseCode = "400", description = "Invalid code or state"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/google")
+    public ResponseEntity<?> handleGoogleCallback(@RequestParam("code") String code,
+                                                  @RequestParam(value = "state", required = false) String state) {
+        return authService.handleOAuthCallback("google", code, state);
+    }
+    @Operation(summary = "Handle Google OAuth for mobile", description = "Authenticates a mobile user via Google ID token and returns JWT tokens")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully authenticated via Google OAuth"),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid ID token"),
+            @ApiResponse(responseCode = "401", description = "OAuth authentication failed")
+    })
+    @PostMapping("/oauth/mobile/google")
+    public ResponseEntity<?> handleMobileOAuth(@Valid @RequestBody Map<String, String> body) {
+        return authService.handleMobileOAuth(body);
     }
 }

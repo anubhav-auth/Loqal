@@ -8,20 +8,25 @@ import com.loqal.authservice.entity.dto.RegisterRequest;
 import com.loqal.authservice.repository.RefreshTokenRepository;
 import com.loqal.authservice.repository.UserCredentialRepository;
 import com.loqal.authservice.utils.JwtUtils;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -32,6 +37,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserDetailServiceImpl userDetailServiceImpl;
+    private final RestTemplate restTemplate;
+    private final HttpSession httpSession;
+
+    @Value("${spring.security.oauth2.client.registration.google.client-id}")
+    private String googleClientId;
+
+    @Value("${spring.security.oauth2.client.registration.google.client-secret}")
+    private String googleClientSecret;
+
+    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
+    private String googleRedirectUri;
+
+    @Value("${state-checker.enabled}")
+    private Boolean stateCheckerEnabled;
 
 
     @Autowired
@@ -41,7 +60,9 @@ public class AuthService {
             UserCredentialRepository userCredentialRepository,
             PasswordEncoder passwordEncoder,
             RefreshTokenRepository refreshTokenRepository,
-            UserDetailServiceImpl userDetailServiceImpl
+            UserDetailServiceImpl userDetailServiceImpl,
+            RestTemplate restTemplate,
+            HttpSession httpSession
     ) {
         this.authManager = authManager;
         this.jwtUtils = jwtUtils;
@@ -49,6 +70,8 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenRepository = refreshTokenRepository;
         this.userDetailServiceImpl = userDetailServiceImpl;
+        this.restTemplate = restTemplate;
+        this.httpSession = httpSession;
     }
 
     public ResponseEntity<?> login(LoginRequest request) {
@@ -114,7 +137,6 @@ public class AuthService {
             String newAccessToken = jwtUtils.generateAccessToken(username);
             String newRefreshToken = jwtUtils.generateRefreshToken(username);
 
-            // Update refresh token in database
             RefreshToken token = dbToken.get();
             token.setToken(newRefreshToken);
             token.setExpiration(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpiration()));
@@ -133,7 +155,6 @@ public class AuthService {
 
         String token = authHeader.substring(7);
         try {
-            // Check if the token is a refresh token
             Optional<RefreshToken> dbToken = refreshTokenRepository.findByToken(token);
             if (dbToken.isPresent()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Refresh token cannot be used for validation"));
@@ -141,8 +162,9 @@ public class AuthService {
 
             String username = jwtUtils.extractUsername(token);
             UserDetails userDetails = userDetailServiceImpl.loadUserByUsername(username);
-
-            // Optionally, verify token expiration matches access token duration
+            if (userDetails == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not found"));
+            }
             long expirationMillis = jwtUtils.extractExpiration(token).getTime() - System.currentTimeMillis();
             if (expirationMillis > jwtUtils.getRefreshTokenExpiration()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Token does not match access token characteristics"));
@@ -156,5 +178,157 @@ public class AuthService {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid token"));
         }
+    }
+
+
+    public ResponseEntity<?> initiateOAuthLogin(String provider) {
+        if (!"google".equalsIgnoreCase(provider)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Unsupported OAuth provider: " + provider));
+        }
+        try {
+            String state = generateRandomState();
+            httpSession.setAttribute("oauth_state", state);
+            String redirectUrl = generateOAuthRedirectUrl(provider, state);
+            return ResponseEntity.ok(Map.of("redirectUrl", redirectUrl));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Failed to initiate OAuth login: " + e.getMessage()));
+        }
+    }
+
+    public ResponseEntity<?> handleOAuthCallback(String provider, String code, String state) {
+        if (!"google".equalsIgnoreCase(provider)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Unsupported OAuth provider: " + provider));
+        }
+        try {
+            String storedState = (String) httpSession.getAttribute("oauth_state");
+            boolean enforceStateCheck = stateCheckerEnabled;
+
+            if (enforceStateCheck && (state == null || !state.equals(storedState))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Invalid or missing state parameter"));
+            }
+            httpSession.removeAttribute("oauth_state");
+
+            String email = exchangeCodeForUserInfo(provider, code);
+            return getResponseEntity(email);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "OAuth authentication failed: " + e.getMessage()));
+        }
+    }
+
+    private String generateOAuthRedirectUrl(String provider, String state) {
+        if (!"google".equalsIgnoreCase(provider)) {
+            throw new UnsupportedOperationException("OAuth provider not implemented: " + provider);
+        }
+        return "https://accounts.google.com/o/oauth2/v2/auth?" + "client_id=" + googleClientId +
+                "&redirect_uri=" + googleRedirectUri +
+                "&response_type=code" +
+                "&scope=openid%20email%20profile" +
+                "&state=" + state;
+    }
+
+    private String exchangeCodeForUserInfo(String provider, String code) {
+        if (!"google".equalsIgnoreCase(provider)) {
+            throw new UnsupportedOperationException("OAuth provider not implemented: " + provider);
+        }
+
+        String tokenEndpoint = "https://oauth2.googleapis.com/token";
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("code", code);
+        params.add("client_id", googleClientId);
+        params.add("client_secret", googleClientSecret);
+        params.add("redirect_uri", googleRedirectUri);
+        params.add("grant_type", "authorization_code");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+
+        ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(tokenEndpoint, request, Map.class);
+        if (tokenResponse.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Failed to exchange code for token");
+        }
+
+        assert tokenResponse.getBody() != null;
+        String idToken = (String) tokenResponse.getBody().get("id_token");
+        if (idToken == null) {
+            throw new RuntimeException("ID token not provided by Google");
+        }
+        String userInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+        ResponseEntity<Map> userInfoResponse = restTemplate.getForEntity(userInfoUrl, Map.class);
+        if (userInfoResponse.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Failed to fetch user info");
+        }
+
+        Map userInfo = userInfoResponse.getBody();
+        assert userInfo != null;
+        String email = (String) userInfo.get("email");
+        if (email == null) {
+            throw new RuntimeException("Email not provided by Google");
+        }
+
+        return email;
+    }
+
+    private String generateRandomState() {
+        return java.util.UUID.randomUUID().toString();
+    }
+
+    public ResponseEntity<?> handleMobileOAuth(Map<String, String> body) {
+        String idToken = body.get("idToken");
+        if (idToken == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing ID token"));
+        }
+
+        try {
+            // Validate ID token via tokeninfo endpoint
+            String userInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+            ResponseEntity<Map> response = restTemplate.getForEntity(userInfoUrl, Map.class);
+            if (response.getStatusCode() != HttpStatus.OK) {
+                throw new RuntimeException("Invalid ID token");
+            }
+
+            Map<String, Object> userInfo = response.getBody();
+            String email = (String) userInfo.get("email");
+            if (email == null) {
+                throw new RuntimeException("Email not found in token");
+            }
+
+            return getResponseEntity(email);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "OAuth authentication failed"));
+        }
+    }
+
+    private ResponseEntity<?> getResponseEntity(String email) {
+        String accessToken = jwtUtils.generateAccessToken(email);
+        String refreshToken = jwtUtils.generateRefreshToken(email);
+
+        Optional<RefreshToken> existingToken = refreshTokenRepository.findByEmail(email);
+        if (existingToken.isPresent()) {
+            RefreshToken token = existingToken.get();
+            token.setToken(refreshToken);
+            token.setExpiration(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpiration()));
+            refreshTokenRepository.save(token);
+        } else {
+            RefreshToken dbToken = new RefreshToken();
+            dbToken.setToken(refreshToken);
+            dbToken.setEmail(email);
+            dbToken.setExpiration(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpiration()));
+            refreshTokenRepository.save(dbToken);
+
+            if (userCredentialRepository.findByEmail(email).isEmpty()) {
+                UserCredential user = new UserCredential();
+                user.setEmail(email);
+                user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+                userCredentialRepository.save(user);
+            }
+        }
+
+        return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken));
     }
 }

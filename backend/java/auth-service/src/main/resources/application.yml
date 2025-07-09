@@ -1,22 +1,33 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/authdb
-    username: postgres
-    password: 15Bhzxc778@
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO_SETTING}
     show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
 
 springdoc:
   api-docs.path: /custom-docs
   swagger-ui.path: /custom-ui.html
 
 jwt:
-  secret: ${JWT_SECRET:TaK+HaV^uvCHEFsEVfypW#7g9^k*Z8$V} //256bits long
-  access-token-expiration: 3600000 # 60 minutes in milliseconds
-  refresh-token-expiration: 604800000 # 7 days in milliseconds
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${ACCESS_TOKEN_EXPIRY}
+  refresh-token-expiration: ${REFRESH_TOKEN_EXPIRY}
+
+state-checker:
+  enabled: ${STATE_CHECKER_ENABLED}
