@@ -1,6 +1,8 @@
-package com.loqal.authservice;
+package com.loqal.authservice.config;
 
 
+import com.loqal.authservice.service.UserDetailServiceImpl;
+import com.loqal.authservice.utils.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

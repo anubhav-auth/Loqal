@@ -1,5 +1,6 @@
-package com.loqal.authservice;
+package com.loqal.authservice.utils;
 
+import com.loqal.authservice.service.UserDetailServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

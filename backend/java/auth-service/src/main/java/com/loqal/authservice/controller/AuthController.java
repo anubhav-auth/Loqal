@@ -1,5 +1,13 @@
-package com.loqal.authservice;
+package com.loqal.authservice.controller;
 
+import com.loqal.authservice.utils.JwtUtils;
+import com.loqal.authservice.repository.RefreshTokenRepository;
+import com.loqal.authservice.repository.UserCredentialRepository;
+import com.loqal.authservice.entity.RefreshToken;
+import com.loqal.authservice.entity.UserCredential;
+import com.loqal.authservice.entity.dto.AuthResponse;
+import com.loqal.authservice.entity.dto.LoginRequest;
+import com.loqal.authservice.entity.dto.RegisterRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,8 +22,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 
 import java.time.Instant;
 import java.util.Map;
@@ -143,24 +149,3 @@ public class AuthController {
     }
 }
 
-// DTO for login request
-record LoginRequest(
-        @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        String email,
-
-        @NotBlank(message = "Password is required")
-        String password
-) {}
-
-// DTO for registration request
-record RegisterRequest(
-        @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        String email,
-
-        @NotBlank(message = "Password is required")
-        String password
-) {}
-
-record AuthResponse(String accessToken, String refreshToken) {}

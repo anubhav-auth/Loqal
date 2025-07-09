@@ -1,5 +1,6 @@
-package com.loqal.authservice;
+package com.loqal.authservice.service;
 
+import com.loqal.authservice.repository.UserCredentialRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

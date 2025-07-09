@@ -1,4 +1,4 @@
-package com.loqal.authservice;
+package com.loqal.authservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
