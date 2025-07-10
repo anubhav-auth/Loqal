@@ -79,4 +79,4 @@ Loqal/
 ├── .gitignore
 ├── README.md
 └── package.json
-```
+``
