@@ -38,7 +38,10 @@ Loqal/
 │   │   ├── notification-service/
 │   │   │   ├── src/
 │   │   │   └── tests/
-│   │   └── analytics-service/
+│   │   |── analytics-service/
+│   │   |    ├── src/
+│   │   |    └── tests/
+│   │   └── chat-and-call-service/
 │   │       ├── src/
 │   │       └── tests/
 │   └── database/
