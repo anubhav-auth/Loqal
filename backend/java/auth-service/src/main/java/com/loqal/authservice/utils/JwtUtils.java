@@ -17,8 +17,6 @@ import java.util.Map;
 public class JwtUtils {
 
 
-//    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor("TaK+HaV^uvCHEFsEVfypW#7g9^k*Z8$V".getBytes());
-
     @Value("${jwt.secret}")
     private String secret;
 

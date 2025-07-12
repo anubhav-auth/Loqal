@@ -1,19 +1,52 @@
 package com.Loqal.userservice.entity;
 
-import lombok.Data;
-import org.springframework.boot.autoconfigure.amqp.RabbitConnectionDetails;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import com.loqal.userservice.entity.Address;
 
+import java.time.LocalDateTime;
 import java.util.List;
-@Document("users")
+import java.util.UUID;
+
+@Entity
+@Table(name = "users")
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class User {
+
     @Id
-    private String id;
-    private String username;
+    @GeneratedValue
+    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
+    private UUID id;
+
+    @Column(unique = true, nullable = false)
     private String email;
-    private String password;
-    private List<String> roles; // CUSTOMER, DELIVERY_AGENT, DISPATCHER, MERCHANT, ADMIN
-    private List<RabbitConnectionDetails.Address> savedAddresses;
+
+    @Column(nullable = false)
+    private String fullName;
+
+    private String phoneNumber;
+
+    private String profilePictureUrl;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    private List<String> roles;
+
+    @Embedded
+    private Address address;
+
+    @Column(nullable = false)
+    private UUID tenantId;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }

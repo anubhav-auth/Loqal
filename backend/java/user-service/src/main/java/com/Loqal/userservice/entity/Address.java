@@ -1,12 +1,17 @@
-package com.Loqal.userservice.entity;
+package com.loqal.userservice.entity;
 
-import lombok.Data;
+import jakarta.persistence.Embeddable;
+import lombok.*;
 
+@Embeddable
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Address {
-    private String label; // e.g., Home, Office
     private String street;
     private String city;
     private String state;
     private String postalCode;
+    private String country;
 }

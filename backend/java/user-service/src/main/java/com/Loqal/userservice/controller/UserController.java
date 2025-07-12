@@ -1,44 +1,78 @@
 package com.Loqal.userservice.controller;
 
-import com.Loqal.userservice.entity.Address;
-import com.Loqal.userservice.entity.User;
+
+import com.Loqal.userservice.entity.dto.UserInfoDto;
+import com.Loqal.userservice.entity.dto.UserOauthRegisterDto;
+import com.Loqal.userservice.entity.dto.UserProfileDto;
+import com.Loqal.userservice.entity.dto.UserRegisterDto;
 import com.Loqal.userservice.services.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.Loqal.userservice.utils.JwtUtils;
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping
 public class UserController {
-    @Autowired
-    private UserService userService;
 
-    @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        return ResponseEntity.ok(userService.createUser(user));
+    private final UserService userService;
+    private final static String TRUSTED_ISSUER = "auth-service";
+    private final JwtUtils jwtUtils;
+
+    public UserController(UserService userService, JwtUtils jwtUtils) {
+        this.userService = userService;
+        this.jwtUtils = jwtUtils;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<User> getUser(@PathVariable String id) {
-        User user = userService.getUserById(id);
-        return user != null ? ResponseEntity.ok(user) : ResponseEntity.notFound().build();
+    // Internal
+    @Hidden
+    @GetMapping("/internal/users/email/{email}")
+    public ResponseEntity<UserInfoDto> getUserByEmail(
+            @PathVariable String email,
+            @RequestHeader("Authorization") String bearerToken
+    ) {
+        String token = bearerToken.replace("Bearer ", "");
+        String issuer = jwtUtils.extractIssuer(token);
+        if (!TRUSTED_ISSUER.equals(issuer)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(userService.getUserInfoByEmail(email));
     }
 
-    @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    @Hidden
+    @PostMapping("/internal/users/oauth-register")
+    public ResponseEntity<UserInfoDto> registerFromOAuth(
+            @RequestBody UserOauthRegisterDto dto,
+            @RequestHeader("Authorization") String bearerToken
+    ) {
+        String token = bearerToken.replace("Bearer ", "");
+        if (!jwtUtils.validateIssuer(token, "auth-service")) {
+            return ResponseEntity.status(403).build();
+        }
+
+        UserInfoDto userInfo = userService.registerOrUpdateFromOAuth(dto);
+        return ResponseEntity.ok(userInfo);
     }
 
-    @PutMapping("/{id}/roles")
-    public ResponseEntity<User> updateRoles(@PathVariable String id, @RequestBody List<String> roles) {
-        return ResponseEntity.ok(userService.updateRoles(id, roles));
+
+    // Public
+    @GetMapping("/users/profile/{id}")
+    public ResponseEntity<UserProfileDto> getProfile(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getProfile(id));
     }
 
-    @PutMapping("/{id}/addresses")
-    public ResponseEntity<User> addAddress(@PathVariable String id, @RequestBody Address address) {
-        return ResponseEntity.ok(userService.addAddress(id, address));
+    @PostMapping("/users/register")
+    public ResponseEntity<UserProfileDto> register(@RequestBody UserRegisterDto dto) {
+        return ResponseEntity.ok(userService.register(dto));
+    }
+
+    @PutMapping("/users/profile/{id}")
+    public ResponseEntity<UserProfileDto> updateProfile(@PathVariable UUID id, @RequestBody UserProfileDto dto) {
+        return ResponseEntity.ok(userService.updateProfile(id, dto));
     }
 }
+
 
