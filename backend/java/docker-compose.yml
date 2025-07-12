@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+  auth-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    networks:
+      - loqal-net
+
+  user-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5434:5432"
+    networks:
+      - loqal-net
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=${AUTH_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - STATE_CHECKER_ENABLED=${STATE_CHECKER_ENABLED}
+      - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY}
+      - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY}
+      - SERVICES_USER-SERVICE_URL=http://user-service:8082
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${DDL_AUTO_SETTING}
+    depends_on:
+      - auth-db
+      - user-service
+    networks:
+      - loqal-net
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=${USER_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${DDL_AUTO_SETTING}
+    depends_on:
+      - user-db
+    networks:
+      - loqal-net
+
+networks:
+  loqal-net:
+    driver: bridge

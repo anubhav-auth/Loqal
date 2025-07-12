@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${POSTGRES_URL}
+    url: ${USER_DB_URL}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
   jpa:

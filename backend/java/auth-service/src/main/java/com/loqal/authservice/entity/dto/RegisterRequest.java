@@ -10,6 +10,11 @@ public record RegisterRequest(
         String email,
 
         @NotBlank(message = "Password is required")
-        String password
+        String password,
+
+        @NotBlank(message = "Full name is required")
+        String fullName,
+        @NotBlank(message = "Phone number is required")
+        String phoneNumber
 ) {
 }

@@ -1,4 +1,4 @@
-package com.loqal.userservice.entity;
+package com.Loqal.userservice.entity;
 
 import jakarta.persistence.Embeddable;
 import lombok.*;

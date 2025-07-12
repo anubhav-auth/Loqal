@@ -28,19 +28,6 @@ public class UserController {
     }
 
     // Internal
-    @Hidden
-    @GetMapping("/internal/users/email/{email}")
-    public ResponseEntity<UserInfoDto> getUserByEmail(
-            @PathVariable String email,
-            @RequestHeader("Authorization") String bearerToken
-    ) {
-        String token = bearerToken.replace("Bearer ", "");
-        String issuer = jwtUtils.extractIssuer(token);
-        if (!TRUSTED_ISSUER.equals(issuer)) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(userService.getUserInfoByEmail(email));
-    }
 
     @Hidden
     @PostMapping("/internal/users/oauth-register")
@@ -49,7 +36,7 @@ public class UserController {
             @RequestHeader("Authorization") String bearerToken
     ) {
         String token = bearerToken.replace("Bearer ", "");
-        if (!jwtUtils.validateIssuer(token, "auth-service")) {
+        if (!jwtUtils.validateIssuer(token, TRUSTED_ISSUER)) {
             return ResponseEntity.status(403).build();
         }
 

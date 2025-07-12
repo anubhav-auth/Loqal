@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.loqal.userservice.entity.Address;
+import com.Loqal.userservice.entity.Address;
 import java.util.UUID;
 
 @Data

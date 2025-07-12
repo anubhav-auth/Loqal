@@ -9,9 +9,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Component
 public class JwtUtils {
@@ -53,14 +51,35 @@ public class JwtUtils {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateAccessToken(String username) {
+    public String generateAccessToken(String email, List<String> roles, UUID tenantId, UUID userId) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username, accessTokenExpiration);
+        claims.put("roles", roles);
+        claims.put("tenant_id", tenantId);
+        claims.put("user_id", userId);
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(email)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .signWith(getSigningKey())
+                .compact();
     }
+
 
     public String generateRefreshToken(String username) {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, username, refreshTokenExpiration);
+    }
+
+    public String generateInternalServiceToken() {
+        return Jwts.builder()
+                .issuer("auth-service")
+                .subject("auth-internal")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 5 * 60 * 1000)) // 5 min expiry
+                .signWith(getSigningKey())
+                .compact();
     }
 
     private String createToken(Map<String, Object> claims, String subject, long expirationTime) {

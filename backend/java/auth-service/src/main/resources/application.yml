@@ -1,33 +1,11 @@
 spring:
   datasource:
-    url: ${POSTGRES_URL}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO_SETTING}
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-    open-in-view: false
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: ${GOOGLE_REDIRECT_URI}
-
-springdoc:
-  api-docs.path: /custom-docs
-  swagger-ui.path: /custom-ui.html
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: ${ACCESS_TOKEN_EXPIRY}
-  refresh-token-expiration: ${REFRESH_TOKEN_EXPIRY}
-
-state-checker:
-  enabled: ${STATE_CHECKER_ENABLED}
