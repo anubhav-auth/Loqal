@@ -1,0 +1,14 @@
+spring:
+  apllication:
+    name: ProductService
+
+
+
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO_SETTING}
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
