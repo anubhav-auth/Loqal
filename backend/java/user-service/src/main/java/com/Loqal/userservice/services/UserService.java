@@ -1,8 +1,8 @@
-package com.Loqal.UserService.services;
+package com.Loqal.userservice.services;
 
-import com.Loqal.UserService.entity.Address;
-import com.Loqal.UserService.entity.User;
-import com.Loqal.UserService.repository.UserRepository;
+import com.Loqal.userservice.entity.Address;
+import com.Loqal.userservice.entity.User;
+import com.Loqal.userservice.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;

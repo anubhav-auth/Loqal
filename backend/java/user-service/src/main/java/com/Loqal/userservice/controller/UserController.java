@@ -1,8 +1,8 @@
-package com.Loqal.UserService.controller;
+package com.Loqal.userservice.controller;
 
-import com.Loqal.UserService.entity.Address;
-import com.Loqal.UserService.entity.User;
-import com.Loqal.UserService.services.UserService;
+import com.Loqal.userservice.entity.Address;
+import com.Loqal.userservice.entity.User;
+import com.Loqal.userservice.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

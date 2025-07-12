@@ -1,6 +1,6 @@
-package com.Loqal.UserService.repository;
+package com.Loqal.userservice.repository;
 
-import com.Loqal.UserService.entity.User;
+import com.Loqal.userservice.entity.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Optional;

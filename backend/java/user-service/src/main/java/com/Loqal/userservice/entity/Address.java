@@ -1,4 +1,4 @@
-package com.Loqal.UserService.entity;
+package com.Loqal.userservice.entity;
 
 import lombok.Data;
 
