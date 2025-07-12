@@ -2490,3 +2490,73 @@
 {"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:11:30:401","userId":"test-user"}
 {"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752338496167_rdrdbkc1n","timestamp":"2025-07-12 22:11:36:168","type":"email","userId":"test-user-1752338485266"}
 {"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-12 22:11:36:169","to":"soham8895279560@gmail.com","type":"transactional","userId":"test-user-1752338485266"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:12:00:464","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:12:00:464"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:12:00:465"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:12:00:465","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:12:30:509","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:12:30:510"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:12:30:510"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:12:30:511","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:13:00:560","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:13:00:561"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:13:00:562"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:13:00:562","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:13:30:603","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:13:30:605"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:13:30:605"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:13:30:606","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:14:00:645","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:14:00:645"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:14:00:645"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:14:00:646","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:14:30:705","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:14:30:708"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:14:30:708"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:14:30:709","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:15:00:755","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:15:00:755"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:15:00:756"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:15:00:756","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:15:30:669","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:15:30:672"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:15:30:673"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:15:30:674","userId":"test-user"}
+{"level":"info","message":"User disconnected from WebSocket","socketId":"rSjDZPW3m7-lE91XAAAB","timestamp":"2025-07-12 22:15:45:443","userEmail":"test@example.com","userId":"test-user-1752338485266"}
+{"level":"info","message":"Redis client connected","timestamp":"2025-07-12 22:15:50:212"}
+{"level":"info","message":"Redis client ready","timestamp":"2025-07-12 22:15:50:216"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:16:00:718","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:16:00:719"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:16:00:721"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:16:00:721","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:16:30:760","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:16:30:761"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:16:30:762"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:16:30:763","userId":"test-user"}
+{"level":"info","message":"Redis client connected","timestamp":"2025-07-12 22:16:35:695"}
+{"level":"info","message":"Redis client ready","timestamp":"2025-07-12 22:16:35:698"}
+{"level":"info","message":"Redis connection established","timestamp":"2025-07-12 22:16:35:699","url":"redis://localhost:6379"}
+{"level":"info","message":"Email worker initialized successfully","timestamp":"2025-07-12 22:16:35:702"}
+{"level":"info","message":"Socket.IO server initialized","timestamp":"2025-07-12 22:16:35:704"}
+{"interval":"30 seconds","level":"info","message":"Digest job scheduler started","pattern":"*/30 * * * * *","timestamp":"2025-07-12 22:16:35:725"}
+{"level":"info","message":"Notification service running on port 3004","timestamp":"2025-07-12 22:16:35:726"}
+{"level":"info","message":"Environment: development","timestamp":"2025-07-12 22:16:35:727"}
+{"level":"info","message":"Email provider: smtp","timestamp":"2025-07-12 22:16:35:727"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:17:00:797","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:17:00:803"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:17:00:824"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:17:00:824","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:17:00:879","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:17:00:880"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:17:00:882"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:17:00:882","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:17:30:054","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:17:30:059"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:17:30:061"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:17:30:063","userId":"test-user"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-12 22:17:30:915","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-12 22:17:30:916"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-12 22:17:30:918"}
+{"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:17:30:918","userId":"test-user"}
+{"level":"info","message":"User offline, skipping WebSocket notification","timestamp":"2025-07-12 22:17:38:010","to":"soham8895279560@gmail.com","type":"transactional","userId":"test-user-123"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-12 22:17:46:849"}
