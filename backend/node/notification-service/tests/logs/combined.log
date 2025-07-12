@@ -1,0 +1,38 @@
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client connected\u001b[39m","timestamp":"2025-07-12 21:21:29:2129"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client ready\u001b[39m","timestamp":"2025-07-12 21:21:29:2129"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis connection established\u001b[39m","timestamp":"2025-07-12 21:21:29:2129","url":"redis://localhost:6379"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:21:29:2129"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:21:29:2129"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client connected\u001b[39m","timestamp":"2025-07-12 21:23:26:2326"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client ready\u001b[39m","timestamp":"2025-07-12 21:23:26:2326"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis connection established\u001b[39m","timestamp":"2025-07-12 21:23:26:2326","url":"redis://localhost:6379"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:23:27:2327"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:23:27:2327"}
+{"level":"\u001b[31merror\u001b[39m","message":"\u001b[31mError in sendNotification: isUserOnline is not a function\u001b[39m","stack":"TypeError: isUserOnline is not a function\n    at Object.sendNotification (/Users/soham/Desktop/Loqal/backend/node/notification-service/src/services/notificationService.js:33:30)\n    at sendNotification (/Users/soham/Desktop/Loqal/backend/node/notification-service/src/controllers/notificationController.js:62:46)\n    at Layer.handle [as handle_request] (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/layer.js:95:5)\n    at next (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/route.js:149:13)\n    at Route.dispatch (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/route.js:119:3)\n    at Layer.handle [as handle_request] (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/layer.js:95:5)\n    at /Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/index.js:284:15\n    at Function.process_params (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/index.js:346:12)\n    at next (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/index.js:280:10)\n    at Function.handle (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/express/lib/router/index.js:175:3)","timestamp":"2025-07-12 21:26:26:2626"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client connected\u001b[39m","timestamp":"2025-07-12 21:29:01:291"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client ready\u001b[39m","timestamp":"2025-07-12 21:29:01:291"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis connection established\u001b[39m","timestamp":"2025-07-12 21:29:01:291","url":"redis://localhost:6379"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:29:01:291"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:29:01:291"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mMessage stored for digest (user offline)\u001b[39m","timestamp":"2025-07-12 21:29:11:2911","to":"soham8895279560@gmail.com","type":"transactional","userId":"test-user"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client connected\u001b[39m","timestamp":"2025-07-12 21:37:15:3715"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis client ready\u001b[39m","timestamp":"2025-07-12 21:37:15:3715"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mRedis connection established\u001b[39m","timestamp":"2025-07-12 21:37:15:3715","url":"redis://localhost:6379"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:37:15:3715"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:37:15:3715"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:47:56:4756"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:47:56:4756"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:55:34:5534"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:55:34:5534"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 21:56:54:5654"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 21:56:54:5654"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO authentication attempt\u001b[39m","timestamp":"2025-07-12 22:00:17:017","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:00:43:043"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO server initialized\u001b[39m","timestamp":"2025-07-12 22:00:43:043"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mSocket.IO authentication attempt\u001b[39m","timestamp":"2025-07-12 22:00:45:045","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:02:38:238"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:03:01:31"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:04:09:49"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:04:55:455"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:05:10:510"}
+{"level":"\u001b[32minfo\u001b[39m","message":"\u001b[32mBullMQ queues initialized successfully\u001b[39m","timestamp":"2025-07-12 22:11:20:1120"}
