@@ -1,18 +1,44 @@
 package com.Loqal.ProductService.entity;
 
+import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Generated;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "products")
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+@Table(name="products" )
 @Data
 public class Product {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private UUID id;
+
+    @Column(nullable = false)
     private String name;//product name
+
     private String description;//details about the product
-    private String category;// ex-accessories
+
+    @Column(nullable = false)
+    private UUID categoryId;
+
+    @Column(nullable = false)
     private double price;
-    private int inventory; //Number of units available in stock.
-    private String merchantId;//ID of the merchant who owns this product. Useful for filtering per merchant.
+
+    @Column(nullable = false)
+    private boolean is_available;
+
+    @Column(columnDefinition = "jsonb")
+    @Convert(converter = StringListConverter.class)
+    private List<String> image_urls;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date created_at;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date updated_at;
+
+    @Column(nullable = false)
+    private UUID merchantId;//ID of the merchant who owns this product. Useful for filtering per merchant.
 }

@@ -1,11 +1,12 @@
 package com.Loqal.ProductService.repository;
 
 import com.Loqal.ProductService.entity.Product;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+
 
 import java.util.List;
+import java.util.UUID;
 
-public interface ProductRepository extends MongoRepository<Product, String> {
-    List<Product> findByMerchantId(String merchantId);
-    List<Product> findByCategory(String category);
+public interface ProductRepository extends JpaRepository<Product, UUID> {
+
 }

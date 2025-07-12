@@ -7,36 +7,32 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/products")
+@RequestMapping("/product")
 public class ProductController {
     @Autowired
-    private ProductService productService;
+    private ProductService  productService;
 
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
-        return ResponseEntity.ok(productService.createProduct(product));
+    public Product create(@RequestBody Product product) {
+        return productService.create(product);
     }
-
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public List<Product> all() {
+        return productService.getAll();
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> getById(@PathVariable UUID id) {
+        return productService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> update(@PathVariable UUID id, @RequestBody Product product) {
+        Product updated = productService.update(id, product);
+        return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
     }
 
-    @GetMapping("/merchant/{merchantId}")
-    public ResponseEntity<List<Product>> getByMerchant(@PathVariable String merchantId) {
-        return ResponseEntity.ok(productService.getProductsByMerchant(merchantId));
-    }
-
-    @GetMapping("/category/{category}")
-    public ResponseEntity<List<Product>> getByCategory(@PathVariable String category) {
-        return ResponseEntity.ok(productService.getProductsByCategory(category));
-    }
-
-    @PutMapping("/{id}/inventory")
-    public ResponseEntity<Product> updateInventory(@PathVariable String id, @RequestParam int quantity) {
-        return ResponseEntity.ok(productService.updateInventory(id, quantity));
-    }
 }
-
