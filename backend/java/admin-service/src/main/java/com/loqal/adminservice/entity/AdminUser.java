@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "admin_users")
@@ -11,13 +12,13 @@ import java.util.List;
 public class AdminUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId; // Foreign key to User Service
+    private UUID userId; // Foreign key to User Service
 
     @Column(name = "tenant_id", nullable = false)
-    private Long tenantId; // For multitenancy
+    private UUID tenantId; // For multitenancy
 
     @ElementCollection
     @CollectionTable(name = "admin_permissions", joinColumns = @JoinColumn(name = "admin_user_id"))

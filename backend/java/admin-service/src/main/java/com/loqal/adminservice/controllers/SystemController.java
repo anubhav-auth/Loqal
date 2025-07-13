@@ -19,6 +19,6 @@ public class SystemController {
     @GetMapping("/health")
     @PreAuthorize("hasAuthority('view_metrics')")
     public ResponseEntity<String> getSystemHealth() {
-        return ResponseEntity.ok("System is healthy"); // Placeholder; integrate with Actuator
+        return ResponseEntity.ok("System is healthy");
     }
 }

@@ -5,13 +5,14 @@ import com.loqal.adminservice.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuditLogService {
     private final AuditLogRepository auditLogRepository;
 
-    public void logAction(Long adminUserId, Long tenantId, String action, String entityType, Long entityId, String details) {
+    public void logAction(UUID adminUserId, UUID tenantId, String action, String entityType, UUID entityId, String details) {
         AuditLog auditLog = new AuditLog();
         auditLog.setAdminUserId(adminUserId);
         auditLog.setTenantId(tenantId);

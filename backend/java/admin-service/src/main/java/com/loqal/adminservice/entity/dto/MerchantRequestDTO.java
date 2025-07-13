@@ -2,10 +2,12 @@ package com.loqal.adminservice.entity.dto;
 
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class MerchantRequestDTO {
-    private Long userId;
-    private Long tenantId;
+    private UUID userId;
+    private UUID tenantId;
     private String name;
     private String description;
     private String address;
