@@ -34,3 +34,4 @@ build/
 
 prod.env
 dev.env
+.env
