@@ -2,11 +2,11 @@ import express from "express"
 import dotenv from "dotenv"
 dotenv.config();
 import { connectDB } from "./src/libs/db.js";
-const app = express();
+import {app,server} from "./src/libs/socket.js"
 const port = 3000;
 app.use(express.json());
 
-app.listen(port, () => {
+server.listen(port, () => {
     console.log("server is on port: " + port);
     connectDB();
 })
