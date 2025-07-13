@@ -87,7 +87,7 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Invalid code or state"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @GetMapping("/google")
+    @PostMapping("/google")
     public ResponseEntity<?> handleGoogleCallback(@RequestParam("code") String code,
                                                   @RequestParam(value = "state", required = false) String state) {
         return authService.handleOAuthCallback("google", code, state);

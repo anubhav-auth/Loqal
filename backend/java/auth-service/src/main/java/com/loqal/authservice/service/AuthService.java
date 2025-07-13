@@ -8,6 +8,7 @@ import com.loqal.authservice.repository.RefreshTokenRepository;
 import com.loqal.authservice.repository.UserCredentialRepository;
 import com.loqal.authservice.utils.JwtUtils;
 import jakarta.servlet.http.HttpSession;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +24,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +41,7 @@ public class AuthService {
     private final RestTemplate restTemplate;
     private final HttpSession httpSession;
     private final UserServiceClient userServiceClient;
+    public static final UUID NON_TENANT_UUID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -80,7 +83,7 @@ public class AuthService {
             authManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
             String internalServiceToken = jwtUtils.generateInternalServiceToken();
-            UserOauthRegisterDto dto = createDefaultOauthDto(request.email(), "");
+            UserOauthRegisterDto dto = createDefaultOauthDto(request.email());
 
             UserInfoDto userInfo = userServiceClient.registerOrFetchUser(dto, internalServiceToken);
             if (userInfo == null || userInfo.userId() == null || userInfo.roles() == null) {
@@ -90,8 +93,8 @@ public class AuthService {
             String accessToken = jwtUtils.generateAccessToken(
                     request.email(),
                     userInfo.roles(),
-                    userInfo.userId(),
-                    userInfo.tenantId()
+                    userInfo.tenantId(),
+                    userInfo.userId()
             );
 
             String refreshToken = jwtUtils.generateRefreshToken(request.email());
@@ -118,6 +121,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public ResponseEntity<?> register(RegisterRequest request) {
         try {
             if (userCredentialRepository.findByEmail(request.email()).isPresent()) {
@@ -132,6 +136,9 @@ public class AuthService {
             UserOauthRegisterDto dto = UserOauthRegisterDto.builder()
                     .email(request.email())
                     .fullName(request.fullName())
+                    .phoneNumber(request.phoneNumber())
+                    .tenantId(NON_TENANT_UUID)
+                    .profilePictureUrl("")
                     .address(Address.defaultAddress())
                     .build();
 
@@ -169,6 +176,7 @@ public class AuthService {
                     .build();
 
             UserInfoDto userInfo = userServiceClient.registerOrFetchUser(dto, internalServiceToken);
+
             if (userInfo == null || userInfo.userId() == null || userInfo.roles() == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to fetch user info"));
             }
@@ -237,6 +245,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public ResponseEntity<?> handleOAuthCallback(String provider, String code, String state) {
         if (!"google".equalsIgnoreCase(provider)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -255,7 +264,15 @@ public class AuthService {
             Map<String, Object> userInfo = exchangeCodeForUserInfo(provider, code);
             String email = (String) userInfo.get("email");
             String fullName = (String) userInfo.getOrDefault("name", "Unknown User");
-            return getResponseEntity(email, fullName);
+            if (email == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Email not provided by OAuth provider"));
+            }
+
+
+            String extractPhoneNumber = extractPhoneNumber(userInfo);
+            String phoneNumber = (extractPhoneNumber== null)? " " : extractPhoneNumber;
+            return getResponseEntity(email, fullName, phoneNumber);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "OAuth authentication failed: " + e.getMessage()));
@@ -270,7 +287,7 @@ public class AuthService {
                 "client_id=" + googleClientId +
                 "&redirect_uri=" + googleRedirectUri +
                 "&response_type=code" +
-                "&scope=openid%20email%20profile" +
+                "&scope=openid%20email%20profile%20https://www.googleapis.com/auth/user.phonenumbers.read" +
                 "&state=" + state;
     }
 
@@ -298,9 +315,12 @@ public class AuthService {
 
         assert tokenResponse.getBody() != null;
         String idToken = (String) tokenResponse.getBody().get("id_token");
+        String accessToken = (String) tokenResponse.getBody().get("access_token");
         if (idToken == null) {
             throw new RuntimeException("ID token not provided by Google");
         }
+
+        // Fetch user info from tokeninfo endpoint
         String userInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
         ResponseEntity<Map> userInfoResponse = restTemplate.getForEntity(userInfoUrl, Map.class);
         if (userInfoResponse.getStatusCode() != HttpStatus.OK) {
@@ -314,6 +334,17 @@ public class AuthService {
             throw new RuntimeException("Email not provided by Google");
         }
 
+        // Fetch phone number from People API
+        String peopleApiUrl = "https://people.googleapis.com/v1/people/me?personFields=phoneNumbers";
+        HttpHeaders peopleHeaders = new HttpHeaders();
+        peopleHeaders.setBearerAuth(accessToken);
+        HttpEntity<?> peopleEntity = new HttpEntity<>(peopleHeaders);
+        ResponseEntity<Map> peopleResponse = restTemplate.exchange(peopleApiUrl, HttpMethod.GET, peopleEntity, Map.class);
+        if (peopleResponse.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Failed to fetch phone number");
+        }
+
+        userInfo.put("phoneNumbers", peopleResponse.getBody().get("phoneNumbers"));
         return userInfo;
     }
 
@@ -321,6 +352,7 @@ public class AuthService {
         return UUID.randomUUID().toString();
     }
 
+    @Transactional
     public ResponseEntity<?> handleMobileOAuth(Map<String, String> body) {
         String idToken = body.get("idToken");
         if (idToken == null) {
@@ -328,26 +360,73 @@ public class AuthService {
         }
 
         try {
+            // Validate ID token and get user info
             String userInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
-            ResponseEntity<Map> response = restTemplate.getForEntity(userInfoUrl, Map.class);
-            if (response.getStatusCode() != HttpStatus.OK) {
+            ResponseEntity<Map> userInfoResponse = restTemplate.getForEntity(userInfoUrl, Map.class);
+            if (userInfoResponse.getStatusCode() != HttpStatus.OK) {
                 throw new RuntimeException("Invalid ID token");
             }
 
-            Map<String, Object> userInfo = response.getBody();
+            Map<String, Object> userInfo = userInfoResponse.getBody();
             String email = (String) userInfo.get("email");
             String fullName = (String) userInfo.getOrDefault("name", "Unknown User");
             if (email == null) {
                 throw new RuntimeException("Email not found in token");
             }
 
-            return getResponseEntity(email, fullName);
+            // Fetch access token by exchanging ID token
+            String tokenEndpoint = "https://oauth2.googleapis.com/token";
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("id_token", idToken);
+            params.add("client_id", googleClientId);
+            params.add("client_secret", googleClientSecret);
+            params.add("grant_type", "authorization_code");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
+            ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(tokenEndpoint, tokenRequest, Map.class);
+            if (tokenResponse.getStatusCode() != HttpStatus.OK) {
+                throw new RuntimeException("Failed to exchange ID token for access token");
+            }
+
+            String accessToken = (String) tokenResponse.getBody().get("access_token");
+            if (accessToken == null) {
+                throw new RuntimeException("Access token not provided by Google");
+            }
+
+            // Fetch phone number from People API
+            String peopleApiUrl = "https://people.googleapis.com/v1/people/me?personFields=phoneNumbers";
+            HttpHeaders peopleHeaders = new HttpHeaders();
+            peopleHeaders.setBearerAuth(accessToken);
+            HttpEntity<?> peopleEntity = new HttpEntity<>(peopleHeaders);
+            ResponseEntity<Map> peopleResponse = restTemplate.exchange(peopleApiUrl, HttpMethod.GET, peopleEntity, Map.class);
+            if (peopleResponse.getStatusCode() != HttpStatus.OK) {
+                throw new RuntimeException("Failed to fetch phone number");
+            }
+
+            String extractPhoneNumber = extractPhoneNumber(peopleResponse.getBody());
+            String phoneNumber = (extractPhoneNumber == null)? " " : extractPhoneNumber;
+            return getResponseEntity(email, fullName, phoneNumber);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "OAuth authentication failed"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "OAuth authentication failed: " + e.getMessage()));
         }
     }
 
-    private ResponseEntity<?> getResponseEntity(String email, String fullName) {
+    private String extractPhoneNumber(Map<String, Object> peopleResponse) {
+        if (peopleResponse == null || !peopleResponse.containsKey("phoneNumbers")) {
+            return null;
+        }
+        List<Map<String, Object>> phoneNumbers = (List<Map<String, Object>>) peopleResponse.get("phoneNumbers");
+        if (phoneNumbers == null || phoneNumbers.isEmpty()) {
+            return null;
+        }
+        // Return the first phone number's value
+        Map<String, Object> phoneData = phoneNumbers.get(0);
+        return (String) phoneData.get("value");
+    }
+
+    private ResponseEntity<?> getResponseEntity(String email, String fullName, String phoneNumber) {
         if (userCredentialRepository.findByEmail(email).isEmpty()) {
             UserCredential user = new UserCredential();
             user.setEmail(email);
@@ -358,7 +437,9 @@ public class AuthService {
         UserOauthRegisterDto dto = UserOauthRegisterDto.builder()
                 .email(email)
                 .fullName(fullName)
+                .phoneNumber(phoneNumber)
                 .address(Address.defaultAddress())
+                .tenantId(NON_TENANT_UUID)
                 .build();
 
         String serviceJwt = jwtUtils.generateInternalServiceToken();
@@ -370,8 +451,8 @@ public class AuthService {
         String accessToken = jwtUtils.generateAccessToken(
                 email,
                 userInfo.roles(),
-                userInfo.userId(),
-                userInfo.tenantId()
+                userInfo.tenantId(),
+                userInfo.userId()
         );
         String refreshToken = jwtUtils.generateRefreshToken(email);
 
@@ -385,11 +466,9 @@ public class AuthService {
         return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken));
     }
 
-    private UserOauthRegisterDto createDefaultOauthDto(String email, String fullName) {
+    private UserOauthRegisterDto createDefaultOauthDto(String email) {
         return UserOauthRegisterDto.builder()
                 .email(email)
-                .fullName(fullName)
-                .address(Address.defaultAddress())
                 .build();
     }
 }

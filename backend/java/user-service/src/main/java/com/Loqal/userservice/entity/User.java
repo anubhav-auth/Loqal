@@ -1,5 +1,6 @@
 package com.Loqal.userservice.entity;
 
+import com.Loqal.userservice.entity.dto.UserRoles;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -34,8 +35,9 @@ public class User {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    private List<String> roles;
+    private List<UserRoles> roles;
 
     @Embedded
     private Address address;

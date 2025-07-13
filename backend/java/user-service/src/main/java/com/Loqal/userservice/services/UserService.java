@@ -1,11 +1,10 @@
 package com.Loqal.userservice.services;
 
 import com.Loqal.userservice.entity.User;
-import com.Loqal.userservice.entity.dto.UserInfoDto;
-import com.Loqal.userservice.entity.dto.UserOauthRegisterDto;
-import com.Loqal.userservice.entity.dto.UserProfileDto;
-import com.Loqal.userservice.entity.dto.UserRegisterDto;
+import com.Loqal.userservice.entity.dto.*;
 import com.Loqal.userservice.repository.UserRepository;
+import jakarta.transaction.Transactional;
+import jdk.jfr.TransitionTo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -40,6 +39,7 @@ public class UserService {
         return mapToProfile(user);
     }
 
+    @Transactional
     public UserProfileDto register(UserRegisterDto dto) {
         if (repo.findByEmail(dto.getEmail()).isPresent())
             throw new RuntimeException("Email already exists");
@@ -51,13 +51,14 @@ public class UserService {
                 .profilePictureUrl(dto.getProfilePictureUrl())
                 .tenantId(dto.getTenantId())
                 .address(dto.getAddress())
-                .roles(List.of("USER"))
+                .roles(List.of(UserRoles.USER))
                 .build();
 
         User saved = repo.save(user);
         return mapToProfile(saved);
     }
 
+    @Transactional
     public UserProfileDto updateProfile(UUID id, UserProfileDto dto) {
         User user = repo.findById(id).orElseThrow(() ->
                 new RuntimeException("User not found"));
@@ -83,16 +84,13 @@ public class UserService {
                 .build();
     }
 
+    @Transactional
     public UserInfoDto registerOrUpdateFromOAuth(UserOauthRegisterDto dto) {
         Optional<Object> optionalUser = repo.findByEmail(dto.getEmail());
 
         User user;
         if (optionalUser.isPresent()) {
             user = (User) optionalUser.get();
-            user.setFullName(dto.getFullName());
-            user.setPhoneNumber(dto.getPhoneNumber());
-            user.setProfilePictureUrl(dto.getProfilePictureUrl());
-            user.setAddress(dto.getAddress());
         } else {
             user = User.builder()
                     .email(dto.getEmail())
@@ -101,16 +99,17 @@ public class UserService {
                     .profilePictureUrl(dto.getProfilePictureUrl())
                     .address(dto.getAddress())
                     .tenantId(dto.getTenantId())
-                    .roles(List.of("USER"))
+                    .roles(List.of(UserRoles.USER))
                     .build();
+            repo.save(user);
         }
 
-        User saved = repo.save(user);
+
 
         return UserInfoDto.builder()
-                .userId(saved.getId())
-                .roles(saved.getRoles())
-                .tenantId(saved.getTenantId())
+                .userId(user.getId())
+                .roles(user.getRoles())
+                .tenantId(user.getTenantId())
                 .build();
     }
 }

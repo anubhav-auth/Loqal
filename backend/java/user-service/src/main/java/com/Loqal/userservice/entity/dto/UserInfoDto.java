@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 public class UserInfoDto {
     private UUID userId;
-    private List<String> roles;
+    private List<UserRoles> roles;
     private UUID tenantId;
 }
 
