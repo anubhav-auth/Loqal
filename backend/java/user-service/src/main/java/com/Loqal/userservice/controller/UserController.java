@@ -46,7 +46,12 @@ public class UserController {
     // Public
     @GetMapping("/users/profile/{id}")
     public ResponseEntity<UserProfileDto> getProfile(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getProfile(id));
+        try {
+            return ResponseEntity.ok(userService.getProfile(id));
+        } catch (Exception e) {
+            throw new RuntimeException("User not found for ID: " + id, e);
+        }
+
     }
 
     @PostMapping("/users/register")
