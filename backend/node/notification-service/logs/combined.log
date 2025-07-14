@@ -2560,3 +2560,126 @@
 {"level":"info","message":"Processing digest for user","messageCount":4,"timestamp":"2025-07-12 22:17:30:918","userId":"test-user"}
 {"level":"info","message":"User offline, skipping WebSocket notification","timestamp":"2025-07-12 22:17:38:010","to":"soham8895279560@gmail.com","type":"transactional","userId":"test-user-123"}
 {"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-12 22:17:46:849"}
+{"level":"info","message":"Redis client connected","timestamp":"2025-07-14 14:07:40:832"}
+{"level":"info","message":"Redis client ready","timestamp":"2025-07-14 14:07:40:847"}
+{"level":"info","message":"Redis connection established","timestamp":"2025-07-14 14:07:40:847","url":"redis://localhost:6379"}
+{"level":"info","message":"Email worker initialized successfully","timestamp":"2025-07-14 14:07:40:851"}
+{"level":"info","message":"Socket.IO server initialized","timestamp":"2025-07-14 14:07:40:853"}
+{"interval":"30 seconds","level":"info","message":"Digest job scheduler started","pattern":"*/30 * * * * *","timestamp":"2025-07-14 14:07:40:903"}
+{"level":"info","message":"Notification service running on port 3004","timestamp":"2025-07-14 14:07:40:905"}
+{"level":"info","message":"Environment: development","timestamp":"2025-07-14 14:07:40:905"}
+{"level":"info","message":"Email provider: smtp","timestamp":"2025-07-14 14:07:40:905"}
+{"email":"test@example.com","level":"info","message":"Test token generated","timestamp":"2025-07-14 14:07:58:480","userId":"test-user-1752482278447"}
+{"level":"info","message":"Socket.IO authentication attempt","timestamp":"2025-07-14 14:07:59:988","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"email":"test@example.com","level":"info","message":"Socket.IO authentication success","timestamp":"2025-07-14 14:07:59:992","userId":"test-user-1752482278447"}
+{"level":"info","message":"User connected via WebSocket","socketId":"JrE0ogCg7HIJEaHjAAAB","timestamp":"2025-07-14 14:07:59:993","userEmail":"test@example.com","userId":"test-user-1752482278447"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-14 14:08:00:973","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-14 14:08:00:974"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-14 14:08:00:975"}
+{"level":"info","message":"Digest job processing completed","processedUsers":1,"timestamp":"2025-07-14 14:08:00:976"}
+{"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752482289217_gl6ia80ze","timestamp":"2025-07-14 14:08:09:218","type":"email","userId":"test-user-1752482278447"}
+{"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-14 14:08:09:218","to":"soham7857@gmail.com","type":"transactional","userId":"test-user-1752482278447"}
+{"level":"info","message":"Sending message via email SMTP","timestamp":"2025-07-14 14:08:09:219"}
+{"fromEmail":"soham7857@gmail.com","level":"info","message":"Provider status: ","provider":"smtp","smtpConfigured":true,"timestamp":"2025-07-14T08:38:09.219Z"}
+{"level":"info","message":"Validating email: ","timestamp":"2025-07-14 14:08:09:220"}
+{"level":"info","message":"Sending mail: ","timestamp":"2025-07-14 14:08:09:233"}
+{"0":"r","1":"e","2":"a","3":"s","4":"o","5":"n","6":":","level":"error","message":"Failed to send email via SMTP: getaddrinfo ENOTFOUND smtp.gmail.com","originalError":{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","syscall":"getaddrinfo"},"provider":"smtp","timestamp":"2025-07-14 14:08:09:252"}
+{"level":"info","message":"Redis client connected","timestamp":"2025-07-14 14:10:02:488"}
+{"level":"info","message":"Redis client ready","timestamp":"2025-07-14 14:10:02:493"}
+{"level":"info","message":"Redis connection established","timestamp":"2025-07-14 14:10:02:493","url":"redis://localhost:6379"}
+{"level":"info","message":"Email worker initialized successfully","timestamp":"2025-07-14 14:10:02:497"}
+{"level":"info","message":"Socket.IO server initialized","timestamp":"2025-07-14 14:10:02:499"}
+{"interval":"30 seconds","level":"info","message":"Digest job scheduler started","pattern":"*/30 * * * * *","timestamp":"2025-07-14 14:10:02:538"}
+{"level":"info","message":"Notification service running on port 3004","timestamp":"2025-07-14 14:10:02:540"}
+{"level":"info","message":"Environment: development","timestamp":"2025-07-14 14:10:02:540"}
+{"level":"info","message":"Email provider: smtp","timestamp":"2025-07-14 14:10:02:541"}
+{"level":"info","message":"Socket.IO authentication attempt","timestamp":"2025-07-14 14:10:06:006","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"email":"test@example.com","level":"info","message":"Socket.IO authentication success","timestamp":"2025-07-14 14:10:06:011","userId":"test-user-1752482278447"}
+{"level":"info","message":"User connected via WebSocket","socketId":"vqZg4iTd7FtsspouAAAB","timestamp":"2025-07-14 14:10:06:012","userEmail":"test@example.com","userId":"test-user-1752482278447"}
+{"level":"info","message":"User disconnected from WebSocket","socketId":"vqZg4iTd7FtsspouAAAB","timestamp":"2025-07-14 14:10:06:174","userEmail":"test@example.com","userId":"test-user-1752482278447"}
+{"email":"test@example.com","level":"info","message":"Test token generated","timestamp":"2025-07-14 14:10:07:818","userId":"test-user-1752482407801"}
+{"level":"info","message":"Socket.IO authentication attempt","timestamp":"2025-07-14 14:10:08:991","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"email":"test@example.com","level":"info","message":"Socket.IO authentication success","timestamp":"2025-07-14 14:10:08:993","userId":"test-user-1752482407801"}
+{"level":"info","message":"User connected via WebSocket","socketId":"vSCZcwwoPkUqqiW2AAAD","timestamp":"2025-07-14 14:10:08:994","userEmail":"test@example.com","userId":"test-user-1752482407801"}
+{"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752482415869_3ye6hlzgd","timestamp":"2025-07-14 14:10:15:869","type":"email","userId":"test-user-1752482407801"}
+{"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-14 14:10:15:870","to":"soham7857@gmail.com","type":"transactional","userId":"test-user-1752482407801"}
+{"level":"info","message":"Sending message via email SMTP","timestamp":"2025-07-14 14:10:15:870"}
+{"fromEmail":"soham7857@gmail.com","level":"info","message":"Provider status: ","provider":"smtp","smtpConfigured":true,"timestamp":"2025-07-14T08:40:15.870Z"}
+{"level":"info","message":"Validating email: ","timestamp":"2025-07-14 14:10:15:871"}
+{"level":"info","message":"Sending mail: ","timestamp":"2025-07-14 14:10:15:875"}
+{"0":"r","1":"e","2":"a","3":"s","4":"o","5":"n","6":":","level":"error","message":"Failed to send email via SMTP: Invalid login: 535-5.7.8 Username and Password not accepted. For more information, go to\n535 5.7.8  https://support.google.com/mail/?p=BadCredentials d2e1a72fcca58-74eb9e06aa6sm10347078b3a.62 - gsmtp","originalError":{"code":"EAUTH","command":"AUTH PLAIN","response":"535-5.7.8 Username and Password not accepted. For more information, go to\n535 5.7.8  https://support.google.com/mail/?p=BadCredentials d2e1a72fcca58-74eb9e06aa6sm10347078b3a.62 - gsmtp","responseCode":535},"provider":"smtp","timestamp":"2025-07-14 14:10:18:533"}
+{"level":"info","message":"Redis client connected","timestamp":"2025-07-14 14:13:02:648"}
+{"level":"info","message":"Redis client ready","timestamp":"2025-07-14 14:13:02:654"}
+{"level":"info","message":"Redis connection established","timestamp":"2025-07-14 14:13:02:654","url":"redis://localhost:6379"}
+{"level":"info","message":"Email worker initialized successfully","timestamp":"2025-07-14 14:13:02:658"}
+{"level":"info","message":"Socket.IO server initialized","timestamp":"2025-07-14 14:13:02:659"}
+{"interval":"30 seconds","level":"info","message":"Digest job scheduler started","pattern":"*/30 * * * * *","timestamp":"2025-07-14 14:13:02:705"}
+{"level":"info","message":"Notification service running on port 3004","timestamp":"2025-07-14 14:13:02:707"}
+{"level":"info","message":"Environment: development","timestamp":"2025-07-14 14:13:02:707"}
+{"level":"info","message":"Email provider: smtp","timestamp":"2025-07-14 14:13:02:707"}
+{"level":"info","message":"Socket.IO authentication attempt","timestamp":"2025-07-14 14:13:02:815","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"email":"test@example.com","level":"info","message":"Socket.IO authentication success","timestamp":"2025-07-14 14:13:02:818","userId":"test-user-1752482407801"}
+{"level":"info","message":"User connected via WebSocket","socketId":"Pg9tNDY8HbvJqaOYAAAB","timestamp":"2025-07-14 14:13:02:819","userEmail":"test@example.com","userId":"test-user-1752482407801"}
+{"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752482588708_0r5gvrs1x","timestamp":"2025-07-14 14:13:08:709","type":"email","userId":"test-user-1752482407801"}
+{"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-14 14:13:08:710","to":"soham7857@gmail.com","type":"transactional","userId":"test-user-1752482407801"}
+{"level":"info","message":"Sending message via email SMTP","timestamp":"2025-07-14 14:13:08:710"}
+{"fromEmail":"soham7857@gmail.com","level":"info","message":"Provider status: ","provider":"smtp","smtpConfigured":true,"timestamp":"2025-07-14T08:43:08.710Z"}
+{"level":"info","message":"Validating email: ","timestamp":"2025-07-14 14:13:08:710"}
+{"level":"info","message":"Sending mail: ","timestamp":"2025-07-14 14:13:08:714"}
+{"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752482597134_jd88gxq3q","timestamp":"2025-07-14 14:13:17:135","type":"email","userId":"test-user-1752482407801"}
+{"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-14 14:13:17:135","to":"soham7857@gmail.com","type":"transactional","userId":"test-user-1752482407801"}
+{"level":"info","message":"Sending message via email SMTP","timestamp":"2025-07-14 14:13:17:135"}
+{"fromEmail":"soham7857@gmail.com","level":"info","message":"Provider status: ","provider":"smtp","smtpConfigured":true,"timestamp":"2025-07-14T08:43:17.135Z"}
+{"level":"info","message":"Validating email: ","timestamp":"2025-07-14 14:13:17:136"}
+{"level":"info","message":"Sending mail: ","timestamp":"2025-07-14 14:13:17:136"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-14 14:13:30:759","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-14 14:13:30:760"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-14 14:13:30:762"}
+{"level":"info","message":"Digest job processing completed","processedUsers":1,"timestamp":"2025-07-14 14:13:30:762"}
+{"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752482635998_4r8d8awaz","timestamp":"2025-07-14 14:13:55:999","type":"email","userId":"test-user-1752482407801"}
+{"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-14 14:13:56:000","to":"soham8895279560@gmail.com","type":"transactional","userId":"test-user-1752482407801"}
+{"level":"info","message":"Sending message via email SMTP","timestamp":"2025-07-14 14:13:56:001"}
+{"fromEmail":"soham7857@gmail.com","level":"info","message":"Provider status: ","provider":"smtp","smtpConfigured":true,"timestamp":"2025-07-14T08:43:56.001Z"}
+{"level":"info","message":"Validating email: ","timestamp":"2025-07-14 14:13:56:001"}
+{"level":"info","message":"Sending mail: ","timestamp":"2025-07-14 14:13:56:003"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-14 14:14:00:828","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-14 14:14:00:829"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-14 14:14:00:829"}
+{"level":"info","message":"Digest job processing completed","processedUsers":1,"timestamp":"2025-07-14 14:14:00:830"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-14 14:14:14:182"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-14 14:14:14:233"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-14 14:14:14:258"}
+{"level":"info","message":"Redis client connected","timestamp":"2025-07-14 14:16:11:976"}
+{"level":"info","message":"Redis client ready","timestamp":"2025-07-14 14:16:11:982"}
+{"level":"info","message":"Redis connection established","timestamp":"2025-07-14 14:16:11:982","url":"redis://localhost:6379"}
+{"level":"info","message":"Email worker initialized successfully","timestamp":"2025-07-14 14:16:11:986"}
+{"level":"info","message":"Socket.IO server initialized","timestamp":"2025-07-14 14:16:11:987"}
+{"interval":"30 seconds","level":"info","message":"Digest job scheduler started","pattern":"*/30 * * * * *","timestamp":"2025-07-14 14:16:12:027"}
+{"level":"info","message":"Notification service running on port 3004","timestamp":"2025-07-14 14:16:12:028"}
+{"level":"info","message":"Environment: development","timestamp":"2025-07-14 14:16:12:029"}
+{"level":"info","message":"Email provider: smtp","timestamp":"2025-07-14 14:16:12:029"}
+{"level":"info","message":"Socket.IO authentication attempt","timestamp":"2025-07-14 14:16:13:767","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"email":"test@example.com","level":"info","message":"Socket.IO authentication success","timestamp":"2025-07-14 14:16:13:771","userId":"test-user-1752482407801"}
+{"level":"info","message":"User connected via WebSocket","socketId":"3A6ABZZHD35BOlbWAAAB","timestamp":"2025-07-14 14:16:13:772","userEmail":"test@example.com","userId":"test-user-1752482407801"}
+{"level":"info","message":"User disconnected from WebSocket","socketId":"3A6ABZZHD35BOlbWAAAB","timestamp":"2025-07-14 14:16:15:105","userEmail":"test@example.com","userId":"test-user-1752482407801"}
+{"email":"test@example.com","level":"info","message":"Test token generated","timestamp":"2025-07-14 14:16:16:299","userId":"test-user-1752482776267"}
+{"level":"info","message":"Socket.IO authentication attempt","timestamp":"2025-07-14 14:16:17:032","token":"eyJhbGciOiJIUzI1NiIs..."}
+{"email":"test@example.com","level":"info","message":"Socket.IO authentication success","timestamp":"2025-07-14 14:16:17:034","userId":"test-user-1752482776267"}
+{"level":"info","message":"User connected via WebSocket","socketId":"xKuiUMkkZiHM5oYpAAAD","timestamp":"2025-07-14 14:16:17:035","userEmail":"test@example.com","userId":"test-user-1752482776267"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-14 14:16:30:062","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-14 14:16:30:063"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-14 14:16:30:063"}
+{"level":"info","message":"Digest job processing completed","processedUsers":1,"timestamp":"2025-07-14 14:16:30:064"}
+{"level":"info","message":"Notification emitted via WebSocket","notificationId":"notif_1752482806087_n8nk4q6fn","timestamp":"2025-07-14 14:16:46:089","type":"email","userId":"test-user-1752482776267"}
+{"level":"info","message":"Real-time notification sent via WebSocket","timestamp":"2025-07-14 14:16:46:090","to":"sonalighosh597@gmail.com","type":"transactional","userId":"test-user-1752482776267"}
+{"level":"info","message":"Sending message via email SMTP","timestamp":"2025-07-14 14:16:46:090"}
+{"fromEmail":"soham7857@gmail.com","level":"info","message":"Provider status: ","provider":"smtp","smtpConfigured":true,"timestamp":"2025-07-14T08:46:46.090Z"}
+{"level":"info","message":"Validating email: ","timestamp":"2025-07-14 14:16:46:091"}
+{"level":"info","message":"Sending mail: ","timestamp":"2025-07-14 14:16:46:097"}
+{"level":"info","message":"Processing digest for users with offline messages","timestamp":"2025-07-14 14:17:00:109","userCount":1}
+{"level":"info","message":"getBuffer: before lRange","timestamp":"2025-07-14 14:17:00:109"}
+{"level":"info","message":"getBuffer: after lRange","timestamp":"2025-07-14 14:17:00:110"}
+{"level":"info","message":"Digest job processing completed","processedUsers":1,"timestamp":"2025-07-14 14:17:00:110"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-14 14:17:24:458"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-14 14:17:24:497"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","timestamp":"2025-07-14 14:17:24:529"}

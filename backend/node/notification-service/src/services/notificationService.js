@@ -2,6 +2,7 @@ const { getEmailQueue } = require('../queues/queueManager');
 const { isUserOnline, addToBuffer } = require('../digest/bufferStore');
 const { emitNotification } = require('../sockets/socketServer');
 const logger = require('../utils/logger'); // Fixed import
+const { getProviderStatus, validateEmail, send } = require('../providers/emailProvider');
 
 /**
  * Send a notification
@@ -64,7 +65,13 @@ const sendNotification = async (notificationData) => {
         type
       });
     }
-
+    logger.info("Sending message via email SMTP")
+    logger.info("Provider status: ",getProviderStatus())
+    logger.info("Validating email: ",validateEmail(to));
+    logger.info("Sending mail: ",send(to,{
+      subject:subject,
+      body: content
+    }));
     // ALWAYS queue email for delivery (regardless of WebSocket status)
     // Add to BullMQ queue for processing
     const job = await getEmailQueue().add(
