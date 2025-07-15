@@ -16,9 +16,13 @@ springdoc:
   api-docs.path: /custom-docs
   swagger-ui.path: /custom-ui.html
 
-jwt:
-  secret: ${JWT_SECRET}
+
 
 
 server:
   port: ${USER_SERVER_PORT}
+
+
+jwt:
+  jwks-uri: ${JWT_JWKS_URI}
+

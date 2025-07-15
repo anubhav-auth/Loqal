@@ -4,7 +4,7 @@ import com.Loqal.userservice.entity.User;
 import com.Loqal.userservice.entity.dto.*;
 import com.Loqal.userservice.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import jdk.jfr.TransitionTo;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -13,14 +13,10 @@ import java.util.UUID;
 
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository repo;
-
-    @Autowired
-    public UserService(UserRepository repo) {
-        this.repo = repo;
-    }
 
     public UserInfoDto getUserInfoByEmail(String email) {
         User user = (User) repo.findByEmail(email).orElseThrow(() ->

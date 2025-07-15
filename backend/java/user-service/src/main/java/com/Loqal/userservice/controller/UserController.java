@@ -6,35 +6,32 @@ import com.Loqal.userservice.entity.dto.UserOauthRegisterDto;
 import com.Loqal.userservice.entity.dto.UserProfileDto;
 import com.Loqal.userservice.entity.dto.UserRegisterDto;
 import com.Loqal.userservice.services.UserService;
-import com.Loqal.userservice.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Hidden;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
 @RequestMapping
+@RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
     private final static String TRUSTED_ISSUER = "auth-service";
-    private final JwtUtils jwtUtils;
-
-    public UserController(UserService userService, JwtUtils jwtUtils) {
-        this.userService = userService;
-        this.jwtUtils = jwtUtils;
-    }
 
     // Internal
-
     @Hidden
     @PostMapping("/internal/users/oauth-register")
     public ResponseEntity<UserInfoDto> registerFromOAuth(
             @RequestBody UserOauthRegisterDto dto,
-            @RequestHeader("Authorization") String bearerToken
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        String token = bearerToken.replace("Bearer ", "");
-        if (!jwtUtils.validateIssuer(token, TRUSTED_ISSUER)) {
+        String issuer = String.valueOf(jwt.getIssuer());
+
+        if (!TRUSTED_ISSUER.equals(issuer)) {
             return ResponseEntity.status(403).build();
         }
 
