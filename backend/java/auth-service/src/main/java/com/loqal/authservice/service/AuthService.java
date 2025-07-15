@@ -7,8 +7,10 @@ import com.loqal.authservice.entity.dto.*;
 import com.loqal.authservice.repository.RefreshTokenRepository;
 import com.loqal.authservice.repository.UserCredentialRepository;
 import com.loqal.authservice.utils.JwtUtils;
+import com.nimbusds.jose.JOSEException;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,10 +32,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private final AuthenticationManager authManager;
     private final JwtUtils jwtUtils;
+    private final JwtService jwtService;
     private final UserCredentialRepository userCredentialRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -55,34 +59,11 @@ public class AuthService {
     @Value("${state-checker.enabled}")
     private Boolean stateCheckerEnabled;
 
-    @Autowired
-    AuthService(
-            AuthenticationManager authManager,
-            JwtUtils jwtUtils,
-            UserCredentialRepository userCredentialRepository,
-            PasswordEncoder passwordEncoder,
-            RefreshTokenRepository refreshTokenRepository,
-            UserDetailServiceImpl userDetailServiceImpl,
-            RestTemplate restTemplate,
-            HttpSession httpSession,
-            UserServiceClient userServiceClient
-    ) {
-        this.authManager = authManager;
-        this.jwtUtils = jwtUtils;
-        this.userCredentialRepository = userCredentialRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.userDetailServiceImpl = userDetailServiceImpl;
-        this.restTemplate = restTemplate;
-        this.httpSession = httpSession;
-        this.userServiceClient = userServiceClient;
-    }
-
     public ResponseEntity<?> login(LoginRequest request) {
         try {
             authManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-            String internalServiceToken = jwtUtils.generateInternalServiceToken();
+            String internalServiceToken = jwtService.generateServiceToken();
             UserOauthRegisterDto dto = createDefaultOauthDto(request.email());
 
             UserInfoDto userInfo = userServiceClient.registerOrFetchUser(dto, internalServiceToken);
@@ -90,14 +71,14 @@ public class AuthService {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to fetch user info"));
             }
 
-            String accessToken = jwtUtils.generateAccessToken(
+            String accessToken = jwtService.generateAccessToken(
                     request.email(),
                     userInfo.roles(),
                     userInfo.tenantId(),
                     userInfo.userId()
             );
 
-            String refreshToken = jwtUtils.generateRefreshToken(request.email());
+            String refreshToken = jwtService.generateRefreshToken(request.email(), userInfo.userId());
 
             Optional<RefreshToken> existingToken = refreshTokenRepository.findByEmail(request.email());
             if (existingToken.isPresent()) {
@@ -142,7 +123,7 @@ public class AuthService {
                     .address(Address.defaultAddress())
                     .build();
 
-            userServiceClient.registerOrFetchUser(dto, jwtUtils.generateInternalServiceToken());
+            userServiceClient.registerOrFetchUser(dto, jwtService.generateServiceToken());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "User registered successfully"));
         } catch (DataIntegrityViolationException e) {
@@ -167,7 +148,7 @@ public class AuthService {
             if (jwtUtils.isTokenExpired(refreshToken)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Refresh token is expired"));
             }
-            String internalServiceToken = jwtUtils.generateInternalServiceToken();
+            String internalServiceToken = jwtService.generateServiceToken();
 
             UserOauthRegisterDto dto = UserOauthRegisterDto.builder()
                     .email(username)
@@ -181,14 +162,14 @@ public class AuthService {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to fetch user info"));
             }
 
-            String newAccessToken = jwtUtils.generateAccessToken(
+            String newAccessToken = jwtService.generateAccessToken(
                     username,
                     userInfo.roles(),
-                    userInfo.userId(),
-                    userInfo.tenantId()
+                    userInfo.tenantId(),
+                    userInfo.userId()
             );
 
-            String newRefreshToken = jwtUtils.generateRefreshToken(username);
+            String newRefreshToken = jwtService.generateRefreshToken(username, userInfo.userId());
 
             RefreshToken token = dbToken.get();
             token.setToken(newRefreshToken);
@@ -426,7 +407,7 @@ public class AuthService {
         return (String) phoneData.get("value");
     }
 
-    private ResponseEntity<?> getResponseEntity(String email, String fullName, String phoneNumber) {
+    private ResponseEntity<?> getResponseEntity(String email, String fullName, String phoneNumber) throws JOSEException {
         if (userCredentialRepository.findByEmail(email).isEmpty()) {
             UserCredential user = new UserCredential();
             user.setEmail(email);
@@ -442,19 +423,19 @@ public class AuthService {
                 .tenantId(NON_TENANT_UUID)
                 .build();
 
-        String serviceJwt = jwtUtils.generateInternalServiceToken();
+        String serviceJwt = jwtService.generateServiceToken();
         UserInfoDto userInfo = userServiceClient.registerOrFetchUser(dto, serviceJwt);
         if (userInfo == null || userInfo.userId() == null || userInfo.roles() == null) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to fetch user info"));
         }
 
-        String accessToken = jwtUtils.generateAccessToken(
+        String accessToken = jwtService.generateAccessToken(
                 email,
                 userInfo.roles(),
                 userInfo.tenantId(),
                 userInfo.userId()
         );
-        String refreshToken = jwtUtils.generateRefreshToken(email);
+        String refreshToken = jwtService.generateRefreshToken(email, userInfo.userId());
 
         Optional<RefreshToken> existingToken = refreshTokenRepository.findByEmail(email);
         RefreshToken token = existingToken.orElseGet(() -> new RefreshToken());
