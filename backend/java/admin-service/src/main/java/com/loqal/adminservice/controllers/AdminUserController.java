@@ -62,7 +62,7 @@ public class AdminUserController {
     }
 
     //TODO
-    @PostMapping("/merchants/onboard")
+    @GetMapping("/merchants")
     public  ResponseEntity<?> getMerchants(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size
