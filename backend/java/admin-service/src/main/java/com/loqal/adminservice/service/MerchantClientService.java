@@ -18,10 +18,10 @@ import java.util.UUID;
 public class MerchantClientService {
     private final WebClient webClient;
 
-    @Value("${uri.service_uri}")
+    @Value("${services.user-service.url}")
     private String userServiceUrl;
 
-    @Value("${uri.merchant_uri}")
+    @Value("${services.merchant-service.url}")
     private String merchantUri;
 
 

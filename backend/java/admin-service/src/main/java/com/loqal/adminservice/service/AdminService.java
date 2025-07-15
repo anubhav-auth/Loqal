@@ -20,11 +20,11 @@ public class AdminService {
     private final WebClient webClient;
     private final MerchantClientService merchantClientService;
 
-    @Value("${uri.service_uri}")
+    @Value("${services.user-service.url}")
     private String userServiceUrl;
 
     @Transactional
-    public void createAdmin(AdminUser adminUser) {
+    public AdminUser createAdmin(AdminUser adminUser) {
         if (adminUserRepository.existsByUserId(adminUser.getUserId())) {
             throw new RuntimeException("Admin user already exists for user ID: " + adminUser.getUserId());
         }
@@ -32,10 +32,11 @@ public class AdminService {
         adminUser.setCreatedAt(LocalDateTime.now());
         adminUser.setPermissions(List.of(AdminPermission.MANAGE_USERS));
         adminUserRepository.save(adminUser);
+        return  adminUser;
     }
 
     @Transactional
-    public void upgradeUserToAdmin(UUID id) {
+    public AdminUser upgradeUserToAdmin(UUID id) {
         String userServiceUri = userServiceUrl + "/users/profile/" + id.toString();
         UserProfileDto userProfile = webClient.get()
                 .uri(userServiceUri)
@@ -53,15 +54,18 @@ public class AdminService {
         adminUser.setPermissions(List.of(AdminPermission.MANAGE_USERS));
         adminUser.setCreatedAt(LocalDateTime.now());
         adminUserRepository.save(adminUser);
+
+        return  adminUser;
     }
 
     @Transactional
-    public void updateAdminPermission(UUID userId, List<AdminPermission> permissions) {
+    public AdminUser updateAdminPermission(UUID userId, List<AdminPermission> permissions) {
         AdminUser adminUser = adminUserRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found for ID: " + userId));
 
         adminUser.setPermissions(permissions);
         adminUser.setUpdatedAt(LocalDateTime.now());
         adminUserRepository.save(adminUser);
+        return adminUser;
     }
 }

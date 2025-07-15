@@ -1,0 +1,6 @@
+server:
+  port: ${ADMIN_SERVER_PORT}
+
+
+jwt:
+  jwks-uri: ${JWT_JWKS_URI}
