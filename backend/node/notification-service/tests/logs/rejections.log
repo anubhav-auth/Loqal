@@ -1,0 +1,21 @@
+2025-07-12 22:00:17:017 [31merror[39m: [31munhandledRejection: setUserPresence is not a function[39m
+[31mTypeError: setUserPresence is not a function[39m
+[31m    at Namespace.<anonymous> (/Users/soham/Desktop/Loqal/backend/node/notification-service/src/sockets/socketServer.js:55:11)[39m
+[31m    at Namespace.emit (node:events:519:28)[39m
+[31m    at Namespace.emitReserved (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/socket.io/dist/typed-events.js:56:22)[39m
+[31m    at Namespace._doConnect (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/socket.io/dist/namespace.js:276:14)[39m
+[31m    at /Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/socket.io/dist/namespace.js:238:22[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)[39m
+2025-07-12 22:00:45:045 [31merror[39m: [31munhandledRejection: setUserPresence is not a function[39m
+[31mTypeError: setUserPresence is not a function[39m
+[31m    at Namespace.<anonymous> (/Users/soham/Desktop/Loqal/backend/node/notification-service/src/sockets/socketServer.js:55:11)[39m
+[31m    at Namespace.emit (node:events:519:28)[39m
+[31m    at Namespace.emitReserved (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/socket.io/dist/typed-events.js:56:22)[39m
+[31m    at Namespace._doConnect (/Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/socket.io/dist/namespace.js:276:14)[39m
+[31m    at /Users/soham/Desktop/Loqal/backend/node/notification-service/node_modules/socket.io/dist/namespace.js:238:22[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)[39m
+2025-07-14 14:08:09:89 [31merror[39m: [31munhandledRejection: Failed to send email via SMTP: getaddrinfo ENOTFOUND smtp.gmail.com[39m
+[31m  No stack trace[39m
+2025-07-14 14:10:18:1018 [31merror[39m: [31munhandledRejection: Failed to send email via SMTP: Invalid login: 535-5.7.8 Username and Password not accepted. For more information, go to[39m
+[31m535 5.7.8  https://support.google.com/mail/?p=BadCredentials d2e1a72fcca58-74eb9e06aa6sm10347078b3a.62 - gsmtp[39m
+[31m  No stack trace[39m

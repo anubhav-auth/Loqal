@@ -1,0 +1,14 @@
+2025-07-12 22:04:55:455 [31merror[39m: [31muncaughtException: listen EADDRINUSE: address already in use :::3003[39m
+[31mError: listen EADDRINUSE: address already in use :::3003[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1904:16)[39m
+[31m    at listenInCluster (node:net:1961:12)[39m
+[31m    at Server.listen (node:net:2063:7)[39m
+[31m    at startServer (/Users/soham/Desktop/Loqal/backend/node/notification-service/index.js:113:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+2025-07-12 22:15:50:1550 [31merror[39m: [31muncaughtException: listen EADDRINUSE: address already in use :::3003[39m
+[31mError: listen EADDRINUSE: address already in use :::3003[39m
+[31m    at Server.setupListenHandle [as _listen2] (node:net:1904:16)[39m
+[31m    at listenInCluster (node:net:1961:12)[39m
+[31m    at Server.listen (node:net:2063:7)[39m
+[31m    at startServer (/Users/soham/Desktop/Loqal/backend/node/notification-service/index.js:113:12)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
