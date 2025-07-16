@@ -2,7 +2,6 @@ package com.loqal.adminservice.service;
 
 import com.loqal.adminservice.entity.AdminUser;
 import com.loqal.adminservice.entity.dto.*;
-import com.loqal.adminservice.entity.dto.MerchantDTO;
 import com.loqal.adminservice.repository.AdminUserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

@@ -1,0 +1,5 @@
+razorpay:
+  key-id: rzp_test_XXXXXX
+  key-secret: YYYYYYYYYYYYYY
+  webhook-secret: your_webhook_secret
+  enabled: true
