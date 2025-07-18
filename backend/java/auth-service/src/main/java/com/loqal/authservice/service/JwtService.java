@@ -28,7 +28,7 @@ public class JwtService {
     }
 
     public String generateRefreshToken(String email, UUID userId) throws JOSEException {
-        return generateToken(email, List.of(), null, userId, "refresh", 7 * 24 * 3600_000); // 7 days
+        return generateToken(email, null, null, userId, "refresh", 7 * 24 * 3600_000); // 7 days
     }
 
     public String generateServiceToken() throws JOSEException {
