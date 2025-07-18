@@ -1,9 +1,8 @@
-package com.Loqal.ProductService.services;
+package com.Loqal.productservice.services;
 
-import com.Loqal.ProductService.entity.Category;
-import com.Loqal.ProductService.repository.CategoryRepository;
+import com.Loqal.productservice.entity.Category;
+import com.Loqal.productservice.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
