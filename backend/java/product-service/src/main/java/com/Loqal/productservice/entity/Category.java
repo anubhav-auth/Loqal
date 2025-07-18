@@ -1,4 +1,4 @@
-package com.Loqal.ProductService.entity;
+package com.Loqal.productservice.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;

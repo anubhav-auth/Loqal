@@ -1,7 +1,7 @@
-package com.Loqal.ProductService.controller;
+package com.Loqal.productservice.controller;
 
-import com.Loqal.ProductService.entity.Product;
-import com.Loqal.ProductService.services.ProductService;
+import com.Loqal.productservice.entity.Product;
+import com.Loqal.productservice.services.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

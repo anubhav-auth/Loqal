@@ -1,7 +1,7 @@
-package com.Loqal.ProductService.services;
+package com.Loqal.productservice.services;
 
-import com.Loqal.ProductService.entity.Product;
-import com.Loqal.ProductService.repository.ProductRepository;
+import com.Loqal.productservice.entity.Product;
+import com.Loqal.productservice.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

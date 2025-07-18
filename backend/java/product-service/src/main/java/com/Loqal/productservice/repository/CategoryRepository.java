@@ -1,6 +1,6 @@
-package com.Loqal.ProductService.repository;
+package com.Loqal.productservice.repository;
 
-import com.Loqal.ProductService.entity.Category;
+import com.Loqal.productservice.entity.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
