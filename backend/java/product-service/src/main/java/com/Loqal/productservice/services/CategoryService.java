@@ -29,8 +29,8 @@ public class CategoryService {
 
     public Category update(UUID id, Category updated) {
         return categoryRepository.findById(id).map(existing -> {
-            existing.setName(updated.getName());
-            existing.setDescription(updated.getDescription());
+            existing.setCategory_name(updated.getCategory_name());
+            existing.setCategory_description(updated.getCategory_description());
             return categoryRepository.save(existing);
         }).orElse(null);
     }
