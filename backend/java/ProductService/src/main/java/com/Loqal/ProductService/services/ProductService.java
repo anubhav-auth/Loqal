@@ -32,7 +32,7 @@ public class ProductService {
         return repo.findById(id).map(existing -> {
             existing.setName(updated.getName());
             existing.setDescription(updated.getDescription());
-            existing.setCategoryId(updated.getCategoryId());
+            existing.setCategory(updated.getCategory());
             existing.setPrice(updated.getPrice());
             existing.set_available(updated.is_available());
             existing.setImage_urls(updated.getImage_urls());

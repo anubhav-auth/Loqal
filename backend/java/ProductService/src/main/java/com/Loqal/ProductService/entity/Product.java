@@ -3,16 +3,23 @@ package com.Loqal.ProductService.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.Generated;
-import org.springframework.data.annotation.Id;
+import org.hibernate.annotations.GenericGenerator;
+
 
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-@Table(name="products" )
+
+
 @Data
+@Entity
+@Table(name="products" )
+
 public class Product {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(generator = "uuid1")
+    @GenericGenerator(name = "uuid1", strategy = "uuid1")
+    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
 
     @Column(nullable = false)
@@ -20,8 +27,8 @@ public class Product {
 
     private String description;//details about the product
 
-    @Column(nullable = false)
-    private UUID categoryId;
+    @Embedded
+    private Category category;
 
     @Column(nullable = false)
     private double price;
@@ -40,5 +47,5 @@ public class Product {
     private Date updated_at;
 
     @Column(nullable = false)
-    private UUID merchantId;//ID of the merchant who owns this product. Useful for filtering per merchant.
+    private UUID merchantId;
 }
