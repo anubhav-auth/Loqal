@@ -9,8 +9,8 @@ import java.util.UUID;
 @Embeddable
 public class Category {
 
-    @Id
-    private UUID id;
+
+
     private String category_name;
     private String category_description;
 }

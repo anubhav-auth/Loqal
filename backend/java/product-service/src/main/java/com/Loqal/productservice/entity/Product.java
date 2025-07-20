@@ -16,9 +16,7 @@ import java.util.UUID;
 
 public class Product {
     @Id
-    @GeneratedValue(generator = "uuid1")
-    @GenericGenerator(name = "uuid1", strategy = "uuid1")
-    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
     @Column(nullable = false)
@@ -33,7 +31,7 @@ public class Product {
     private double price;
 
     @Column(nullable = false)
-    private boolean is_available;
+    private long quantity;
 
     @Column(columnDefinition = "jsonb")
     @Convert(converter = StringListConverter.class)
@@ -47,4 +45,5 @@ public class Product {
 
     @Column(nullable = false)
     private UUID merchantId;
+
 }
