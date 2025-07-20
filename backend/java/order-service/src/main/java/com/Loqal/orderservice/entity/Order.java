@@ -1,5 +1,6 @@
-package com.Loqal.OrderService.entity;
+package com.Loqal.orderservice.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Table;
@@ -7,7 +8,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Table(name="orders")
@@ -16,9 +17,15 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
+
+    @Column(nullable = false)
     private UUID customerId;
+    @Column(nullable = false)
     private UUID merchantId;
-    private UUID deliveryagentId;
+
+    private UUID deliveryAgentId;
+
+    private List<Product> itemsOrdered;
     private double totalAmount;
     private double discountAmount;
     private double finalAmount;
@@ -27,5 +34,4 @@ public class Order {
     private String currentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
 }
