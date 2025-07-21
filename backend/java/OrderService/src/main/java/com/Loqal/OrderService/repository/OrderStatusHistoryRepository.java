@@ -1,6 +1,6 @@
-package com.Loqal.orderservice.repository;
+package com.Loqal.OrderService.repository;
 
-import com.Loqal.orderservice.entity.OrderStatusHistory;
+import com.Loqal.OrderService.entity.OrderStatusHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
