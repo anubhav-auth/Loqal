@@ -11,10 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/product")
@@ -25,10 +22,10 @@ public class ProductController {
     private ProductRepository repository;
 
     @PostMapping
-    public Product create(@RequestBody ProductDTO product, @AuthenticationPrincipal Jwt jwt) {
+    public Product create(@RequestBody ProductDTO product, @AuthenticationPrincipal Jwt jwt, Date createdAt,Date updatedAt) {
         UUID tenenat_id = UUID.fromString(jwt.getClaimAsString("tenent_id"));
-        Product p=new Product();
-        return productService.create(product, tenenat_id);
+
+        return productService.create(product, tenenat_id,createdAt,updatedAt).getBody();
     }
     @PostMapping("/check-and-update-stock")
     public ResponseEntity<?> checkAndUpdateStock(@RequestBody List<ProductOrderRequest> orderRequests) {
@@ -70,7 +67,7 @@ public class ProductController {
 
         if (tenenat_id == null) return ResponseEntity.internalServerError().body("tenenat_if is not avaialble");
 
-        return productService.getAll(tenenat_id);
+        return ResponseEntity.ok(productService.getAll(tenenat_id)) ;
     }
 
     @GetMapping("/{id}")
