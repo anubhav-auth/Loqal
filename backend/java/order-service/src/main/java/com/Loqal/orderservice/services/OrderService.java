@@ -1,16 +1,16 @@
-package com.Loqal.OrderService.services;
+package com.Loqal.orderservice.services;
 
-import com.Loqal.OrderService.entity.Order;
-import com.Loqal.OrderService.entity.OrderItem;
-import com.Loqal.OrderService.entity.OrderStatusHistory;
-import com.Loqal.OrderService.repository.OrderItemRepository;
-import com.Loqal.OrderService.repository.OrderRepository;
-import com.Loqal.OrderService.repository.OrderStatusHistoryRepository;
+import com.Loqal.orderservice.dto.OrderRequest;
+import com.Loqal.orderservice.entity.Order;
+import com.Loqal.orderservice.entity.OrderItem;
+import com.Loqal.orderservice.entity.OrderStatusHistory;
+import com.Loqal.orderservice.repository.OrderItemRepository;
+import com.Loqal.orderservice.repository.OrderRepository;
+import com.Loqal.orderservice.repository.OrderStatusHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,23 +21,8 @@ public class OrderService {
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private OrderStatusHistoryRepository statusHistoryRepository;
 
-    public Order create(Order order, List<OrderItem> items, List<OrderStatusHistory> statusHistory) {
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
-        Order savedOrder = orderRepository.save(order);
-
-        UUID orderId = UUID.fromString(savedOrder.getId().toString());
-
-        for (OrderItem item : items) {
-            item.setOrderId(orderId);
-            orderItemRepository.save(item);
-        }
-
-        for (OrderStatusHistory status : statusHistory) {
-            status.setOrderId(orderId);
-            status.setTimestamp(LocalDateTime.now());
-            statusHistoryRepository.save(status);
-        }
+    public Order create(OrderRequest or, UUID userID) {
+        Order o = new Order();
 
         return savedOrder;
     }
@@ -53,7 +38,8 @@ public class OrderService {
     public void delete(UUID id) {
         orderRepository.deleteById(id);
     }
-    public Order updateStatus(UUID orderId, String newStatus, String notes) {
+
+    public Order updateStatus(UUID orderId, OrderDTO orderDTO) {
         return orderRepository.findById(orderId).map(order -> {
             order.setCurrentStatus(newStatus);
             order.setUpdatedAt(LocalDateTime.now());
