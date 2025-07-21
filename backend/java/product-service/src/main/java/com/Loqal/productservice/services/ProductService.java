@@ -38,7 +38,8 @@ public class ProductService {
 
 
     public ResponseEntity<List<Product>> getAll(UUID tenenant_id) {
-        return ResponseEntity.ok(repo.findAll());
+
+        return ResponseEntity.ok(repo.findAllByOrderByTenenantId());
     }
 
     public Optional<Product> getById(UUID id) {
