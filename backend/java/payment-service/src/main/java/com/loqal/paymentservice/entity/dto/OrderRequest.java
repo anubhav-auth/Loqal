@@ -2,11 +2,9 @@ package com.loqal.paymentservice.entity.dto;
 
 import lombok.Data;
 
-
 @Data
-public class PaymentResponse {
-    private String orderId;
-    private String razorpayKeyId;
+public class OrderRequest {
     private Integer amount;
     private String currency;
+    private String receipt;
 }
