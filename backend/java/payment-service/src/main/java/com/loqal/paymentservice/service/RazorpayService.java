@@ -38,7 +38,7 @@ public class RazorpayService {
         orderRequestJson.put("receipt", orderRequest.getReceipt());
 
         Order order = razorpayClient.orders.create(orderRequestJson);
-
+        System.out.println("Razorpay Order Created: " + order);
         PaymentResponse paymentResponse = new PaymentResponse();
         paymentResponse.setOrderId(order.get("id"));
         paymentResponse.setRazorpayKeyId(keyId);
@@ -64,7 +64,6 @@ public class RazorpayService {
 
             return Utils.verifyPaymentSignature(options, keySecret);
         } catch (RazorpayException e) {
-            // Log the exception
             e.printStackTrace();
             return false;
         }

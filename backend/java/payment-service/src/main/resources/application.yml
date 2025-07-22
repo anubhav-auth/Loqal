@@ -1,30 +1,18 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: payment-service
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: payment-service
-  template:
-    metadata:
-      labels:
-        app: payment-service
-    spec:
-      containers:
-        - name: payment-service
-          image: your-registry/payment-service:latest
-          ports:
-            - containerPort: 8080
-          env:
-            - name: RAZORPAY_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: razorpay-secrets
-                  key: key-id
-            - name: RAZORPAY_KEY_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: razorpay-secrets
-                  key: key-secret
+spring:
+  datasource:
+    url: ${USER_DB_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO_SETTING}
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+razorpay:
+  key:
+    id: ${RAZER_ID}
+    secret: ${RAZER_SECRET}

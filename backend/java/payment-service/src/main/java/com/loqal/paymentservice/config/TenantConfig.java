@@ -1,6 +1,5 @@
 package com.loqal.paymentservice.config;
 
-import com.loqal.paymentservice.util.TenantContextHolder;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,21 +11,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Configuration
-@EnableJpaRepositories(basePackages = "com.example.paymentservice.repository")
+//@EnableJpaRepositories(basePackages = "com.example.paymentservice.repository")
 public class TenantConfig {
-    @Bean
-    public OncePerRequestFilter tenantFilter() {
-        return new OncePerRequestFilter() {
-            @Override
-            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-                String tenantId = request.getHeader("X-Tenant-Id");
-                TenantContextHolder.setTenantId(tenantId);
-                try {
-                    filterChain.doFilter(request, response);
-                } finally {
-                    TenantContextHolder.clear();
-                }
-            }
-        };
-    }
+//    @Bean
+//    public OncePerRequestFilter tenantFilter() {
+//        return new OncePerRequestFilter() {
+//            @Override
+//            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+//                String tenantId = request.getHeader("X-Tenant-Id");
+//                TenantContextHolder.setTenantId(tenantId);
+//                try {
+//                    filterChain.doFilter(request, response);
+//                } finally {
+//                    TenantContextHolder.clear();
+//                }
+//            }
+//        };
+//    }
 }

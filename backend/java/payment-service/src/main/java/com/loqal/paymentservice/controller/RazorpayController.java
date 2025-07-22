@@ -12,6 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments")
+//@CrossOrigin(origins = "*")
 public class RazorpayController {
 
     @Autowired
@@ -19,7 +20,6 @@ public class RazorpayController {
 
     /**
      * Creates a Razorpay order.
-     *
      * @param orderRequest The request containing order details.
      * @return A response entity with the order details.
      * @throws RazorpayException if there is an error creating the order.
