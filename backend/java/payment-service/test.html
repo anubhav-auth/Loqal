@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Test Payment</title>
+    <!-- This script loads the Razorpay Checkout script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1a202c;
+            margin-bottom: 20px;
+        }
+        #payButton {
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #payButton:hover {
+            background-color: #2b6cb0;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .success {
+            background-color: #c6f6d5;
+            color: #2f855a;
+        }
+        .error {
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Test Payment Service</h1>
+        <button id="payButton">Pay ₹500 Now</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        document.getElementById('payButton').onclick = function(e) {
+            e.preventDefault();
+            document.getElementById('status').innerText = 'Creating order...';
+            
+            // Step 1: Call your backend to create the order
+            // CORRECTED PORT to 8080 based on your logs
+            fetch('http://localhost:8080/api/payments/order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: 500, // Amount in rupees
+                    currency: 'INR',
+                    receipt: 'test_receipt_' + new Date().getTime()
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(order => {
+                console.log('Order created:', order);
+                document.getElementById('status').innerText = 'Order created. Opening Razorpay...';
+                
+                // Step 2: Open Razorpay Checkout using the response from your backend
+                var options = {
+                    "key": order.razorpayKeyId, // Your Razorpay Key ID from backend
+                    "amount": order.amount, // Amount in the smallest currency unit (paisa)
+                    "currency": order.currency,
+                    "name": "SaaS Platform Inc.",
+                    "description": "Test Transaction",
+                    "image": "https://placehold.co/128x128/4299e1/white?text=SaaS",
+                    "order_id": order.orderId, // The order_id from your backend
+                    "handler": function (response){
+                        // Step 3: This function is called after payment is successful
+                        document.getElementById('status').innerText = 'Payment successful. Verifying...';
+                        console.log('Razorpay response:', response);
+                        
+                        // Step 4: Call your backend to verify the payment
+                        verifyPayment(response);
+                    },
+                    "prefill": {
+                        "name": "Test User",
+                        "email": "test.user@example.com",
+                        "contact": "9999999999"
+                    },
+                    "notes": {
+                        "address": "SaaS Platform Corporate Office"
+                    },
+                    "theme": {
+                        "color": "#4299e1"
+                    }
+                };
+                var rzp = new Razorpay(options);
+                rzp.on('payment.failed', function (response){
+                    // This function is called if payment fails
+                    console.error('Payment failed:', response);
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.innerText = `Payment Failed: ${response.error.description}`;
+                    statusDiv.className = 'error';
+                });
+                rzp.open();
+            })
+            .catch(error => {
+                console.error('Error creating order:', error);
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerText = 'Error creating order. Is the backend running and CORS configured?';
+                statusDiv.className = 'error';
+            });
+        };
+
+        function verifyPayment(payment) {
+            fetch('http://localhost:8080/api/payments/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    razorpay_order_id: payment.razorpay_order_id,
+                    razorpay_payment_id: payment.razorpay_payment_id,
+                    razorpay_signature: payment.razorpay_signature
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.text();
+                }
+                throw new Error('Verification failed!');
+            })
+            .then(text => {
+                console.log('Verification response:', text);
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerText = 'Payment Verified Successfully!';
+                statusDiv.className = 'success';
+            })
+            .catch(error => {
+                console.error('Error verifying payment:', error);
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerText = 'Payment Verification Failed!';
+                statusDiv.className = 'error';
+            });
+        }
+    </script>
+
+</body>
+</html>
+```
+
+I've updated the `fetch` URLs to use port `8080`. With your CORS configuration in place and this corrected port, the test page should now successfully communicate with your backe
