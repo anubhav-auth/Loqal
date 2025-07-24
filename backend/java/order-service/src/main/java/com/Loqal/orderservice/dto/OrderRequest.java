@@ -4,8 +4,20 @@ import com.Loqal.orderservice.entity.Product;
 import lombok.Data;
 
 import java.util.List;
+import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Data
 public class OrderRequest {
-    private List<Product> items;
+    private UUID customerId;
+    private UUID merchantId;
+    private List<Product> itemsOrdered;    // Use 'itemsOrdered' as per your mapping preference
+    private Double totalAmount;
+    private Double discountAmount;
+    private Double finalAmount;
+    private String paymentStatus;
+    private UUID deliveryAddressId;
+    private String currentStatus;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
