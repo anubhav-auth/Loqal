@@ -9,8 +9,6 @@ import com.Loqal.userservice.services.UserService;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
@@ -26,15 +24,8 @@ public class UserController {
     @Hidden
     @PostMapping("/internal/users/oauth-register")
     public ResponseEntity<UserInfoDto> registerFromOAuth(
-            @RequestBody UserOauthRegisterDto dto,
-            @AuthenticationPrincipal Jwt jwt
+            @RequestBody UserOauthRegisterDto dto
     ) {
-        String issuer = String.valueOf(jwt.getIssuer());
-
-        if (!TRUSTED_ISSUER.equals(issuer)) {
-            return ResponseEntity.status(403).build();
-        }
-
         UserInfoDto userInfo = userService.registerOrUpdateFromOAuth(dto);
         return ResponseEntity.ok(userInfo);
     }
