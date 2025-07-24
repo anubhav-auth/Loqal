@@ -1,10 +1,10 @@
-HELP.md
+# === Java / Maven ===
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
+# === Eclipse / Spring Tool Suite (STS) ===
 .apt_generated
 .classpath
 .factorypath
@@ -13,28 +13,39 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# === IntelliJ IDEA / JetBrains ===
+.idea/
 *.iml
+*.iws
 *.ipr
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# === NetBeans ===
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
+# === VS Code ===
 .vscode/
 
-prod.env
-dev.env
+# === Environment Files ===
 .env
+dev.env
+prod.env
 
+# === macOS System Files ===
 .DS_Store
-.idea/
+
+# === Node.js ===
+node_modules/
+logs/
+**/*.log
+
+# === Test Logs and Debug Files ===
+tests/logs/
+test-email.js
+test-postman.js
