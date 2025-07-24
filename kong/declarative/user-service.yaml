@@ -1,0 +1,71 @@
+# kong/declarative/user-service.yaml
+_format_version: "3.0"
+
+services:
+  - name: user-service-upstream
+    url: http://user-service:8082 # Matches the Docker Compose service name and internal port
+    plugins:
+      # 1. JWT Plugin: Validates the incoming JWT signature, expiration, etc.
+      # It also makes the JWT claims available as variables for subsequent plugins.
+      - name: jwt
+        config:
+          # Point Kong to your Auth Service's JWKS endpoint exposed via Kong itself.
+          # Kong will fetch public keys from here to verify incoming JWTs.
+          jwks_uri: http://kong:8000/.well-known/jwks.json # Use Kong's proxy URL for JWKS
+          # Optional: If your access tokens have an 'iss' claim (e.g., "loqal-auth-service"),
+          # you can uncomment and configure `verify_issuer`.
+          # verify_issuer: ["loqal-auth-service"]
+          run_on_preflight: true # Important for CORS preflight requests with Authorization header
+
+      # 2. Request Transformer Advanced Plugin: Injects JWT claims into HTTP headers.
+      # This runs *after* the JWT plugin, using the claims extracted by it.
+      - name: request-transformer-advanced
+        config:
+          add:
+            headers:
+              # These headers will be added to the request before it's sent to the user-service.
+              # The variables like $jwt_claims.user_id correspond to claims in your JWT.
+              - "X-User-ID: $jwt_claims.user_id"
+              # For roles, which is likely a List<String>, Kong might stringify it.
+              # Your Spring Boot service should be prepared to parse this string (e.g., as JSON array string).
+              - "X-User-Roles: $jwt_claims.roles"
+              - "X-Tenant-ID: $jwt_claims.tenant_id"
+
+      # 3. CORS Plugin: Handles Cross-Origin Resource Sharing. Essential for web frontends.
+      - name: cors
+        config:
+          origins: ["*"] # IMPORTANT: In production, change this to your actual frontend domain (e.g., "https://yourfrontend.com")
+          methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+          headers: ["Content-Type", "Authorization", "X-User-ID", "X-User-Roles", "X-Tenant-ID"] # Allow these headers from frontend
+          exposed_headers: ["X-User-ID", "X-User-Roles", "X-Tenant-ID"] # Allow frontend to read these response headers
+          credentials: true
+
+routes:
+  # Route for public user profile access (this will be protected by the JWT plugin on the service)
+  - name: user-public-profile-route
+    service: user-service-upstream
+    paths:
+      - "/users/profile/{id}"
+    methods:
+      - GET
+    strip_path: false
+
+  # Route for user registration.
+  # If this endpoint should be accessible without a JWT (e.g., for new user signup),
+  # you'll need to explicitly tell Kong's JWT plugin to allow anonymous access for this path.
+  # For now, if the service-level JWT plugin is active, it will require a token.
+  # If this is for initial client registration, you might consider routing it through `/auth`
+  # or specifically configuring Kong for anonymous access on this route.
+  - name: user-register-client-route # Example: if clients can register directly via user service
+    service: user-service-upstream
+    paths:
+      - "/users/register"
+    methods:
+      - POST
+    strip_path: false
+    # If this should be unprotected:
+    # plugins:
+    #   - name: jwt
+    #     config:
+    #       anonymous: a_specific_consumer_id_for_guests # You'd define this guest consumer in Kong
+    #       # Or set `config.enabled: false` if you want to skip JWT check only on this route.

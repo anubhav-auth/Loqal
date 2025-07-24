@@ -1,0 +1,36 @@
+# kong/declarative/auth-service.yaml
+_format_version: "3.0"
+
+services:
+  - name: auth-service-upstream
+    url: http://auth-service:8081 # Matches the Docker Compose service name and internal port
+
+routes:
+  # Route for general authentication endpoints (login, register, refresh, Google OAuth)
+  - name: auth-login-register-refresh-google-route
+    service: auth-service-upstream
+    paths:
+      - "/auth" # This will catch /auth, /auth/login, /auth/register, /auth/refresh, /auth/google, etc.
+    methods:
+      - POST
+      - GET
+    strip_path: false # Keep the original /auth prefix when forwarding to the service
+
+  # Route specifically for the validate-token endpoint
+  - name: auth-validate-token-route
+    service: auth-service-upstream
+    paths:
+      - "/auth/validate-token"
+    methods:
+      - POST
+    strip_path: false
+
+  # Route for the JWKS endpoint, which exposes public keys for JWT validation
+  - name: auth-jwks-route
+    service: auth-service-upstream
+    paths:
+      - "/.well-known/jwks.json"
+    methods:
+      - GET
+    strip_path: false # Crucial to retain the /.well-known path
+    # No JWT plugin applied here, as this endpoint *provides* the keys for JWT validation.
