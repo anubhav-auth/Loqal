@@ -57,6 +57,7 @@ public class JwtService {
 
         JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .subject(email)
+                .issuer("auth-service")
                 .claim("user_id", userId)
                 .claim("token_type", type)
                 .issueTime(new Date())

@@ -36,15 +36,28 @@ services:
         paths:
           - ~/auth
           - /.well-known/jwks.json
-
-  - name: user-service
+        strip_path: false
+   # A virtual service for EXTERNAL traffic to the user-service
+  - name: user-service-public
     url: http://user-service:8082
     routes:
-      - name: user-routes
+      - name: user-public-routes
         paths:
           - ~/users
+        strip_path: false
     plugins:
-      - name: jwt # Apply the JWT plugin to this service
+      - name: jwt # PROTECTED by the JWT plugin
+        config:
+          key_claim_name: kid # <--- ADD THIS LINE
+
+  # A virtual service for INTERNAL traffic to the user-service
+  - name: user-service-internal
+    url: http://user-service:8082
+    routes:
+      - name: user-internal-routes
+        paths:
+          - ~/internal
+        strip_path: false
 
 # 2. Define Consumers (who is using the API)
 consumers:
@@ -56,9 +69,21 @@ jwt_secrets:
   - consumer: auth-service # Link to the consumer created above
     # Replace {YOUR_KID} with the actual 'kid' from your JWKS endpoint.
     # To get it, run: curl http://localhost:8000/.well-known/jwks.json
-    key: "b9caa68b-2996-45e1-b816-2565c28f407e" 
+    key: "1346311f-6f90-4c3f-90f2-ece3b72e44c5" 
     algorithm: RS256
     # You must provide the FULL JWKS JSON object as a string here.
     # Example: '{"keys":[{"kty":"RSA","e":"AQAB",...}]}'
-    rsa_public_key: '{"keys":[{"kty":"RSA","e":"AQAB","kid":"b9caa68b-2996-45e1-b816-2565c28f407e","n":"vg4CKVx1Rlr-zUK_Nv7JbTPrimyhYeZwPRjDaG2wZ_MuPcRvZUFTTy11R8l7mu1jpXGbnGIANKzQLx7LnA1e5e74nyoLUnNvuKBoGUjnvExUCYdb4ihkh7LzjomdQ9y4Q6dBUPg1YPVu_IKcbw2CyDEs6pJ1UPbnwGSQixLt34ohoMrvinymJZKsHDG51WWeI4lMvSCaAZ7YE5Yhd90wlB5cIomob_vdDtjfhxJY_LWa_oBefSL4oPBSyjj0HmDjnJDHYF7ZCxuVHTAm7RJl_bAMqydiDwvxc_1fQHueSp5_6UbDkexpD5f7TQ4I79RSf2bWzENbYjVc-S-MaJUrTQ"}]}'
+    rsa_public_key: | 
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAti6ZgM77Oh70Wcn0QtuI
+      4onLq3X6Z5mV0/CJtQgnzauluKlry/eS2yyEmpBa92n/4D3oyfGs+Gync7rxwEPQ
+      56gPEt5jY/+PuI0LDxcR2AfVI0O8DcHfHThURBsaNz87af4v+EsQG3Q8jSIePXUN
+      y0BKhllCXdzGZgh7VKI9gOpGO49QzH5+/1+JNmn3R5T2tubjqOyRj9w/qiLDmIXi
+      vj5tTCqAcvf2yClaC3XmHmdT/3unqJHZHB82uCpz+t6sxu8O7PLWZMAMYelUUB3l
+      79Z9uG4qRoT3YkpDpBxOFqG8tUhxQQjuI9kEa2DVX9tdUdxODjzYxqJFxj90NuKR
+      EwIDAQAB
+      -----END PUBLIC KEY-----
+
+
+
 
