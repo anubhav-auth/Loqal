@@ -29,7 +29,7 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: authdb
+      POSTGRES_DB: loqaldb
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
@@ -46,7 +46,7 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: userdb
+      POSTGRES_DB: loqaldb
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
@@ -67,7 +67,7 @@ services:
       auth-db:
         condition: service_healthy
     environment:
-      AUTH_DB_URL: ${AUTH_DB_URL}
+      AUTH_DB_URL: ${DB_URL}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
@@ -91,7 +91,7 @@ services:
       user-db:
         condition: service_healthy
     environment:
-      USER_DB_URL: ${USER_DB_URL}
+      USER_DB_URL: ${DB_URL}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
