@@ -1,3 +1,5 @@
+<img src="https://github.com/anubhav-auth/Loqal/blob/main/banner.png" width=1000px>
+
 # Loqal - Full Stack SaaS Platform
 
 **Loqal** is a powerful, multi-tenant SaaS platform designed to empower local businesses and startups with a feature-rich, cost-effective digital presence. Built on a modern microservices architecture, it provides a complete ecosystem including a robust backend, native mobile apps, and a suite of web applications for seamless online operations.
