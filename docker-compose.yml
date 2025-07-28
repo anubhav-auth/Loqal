@@ -77,6 +77,7 @@ services:
       DB_URL: ${DB_URL}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      USER_SERVER_PORT: ${USER_SERVER_PORT}
     networks:
       - loqal-net
 
@@ -91,6 +92,7 @@ services:
       DB_URL: ${DB_URL}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRODUCT_SERVER_PORT: ${PRODUCT_SERVER_PORT}
     networks:
       - loqal-net
 
