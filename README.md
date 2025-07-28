@@ -1,4 +1,4 @@
-<img src="https://github.com/anubhav-auth/Loqal/blob/main/banner.png" width=1000px>
+<img src="./banner.png" width=1000px>
 
 # Loqal - Full Stack SaaS Platform
 
