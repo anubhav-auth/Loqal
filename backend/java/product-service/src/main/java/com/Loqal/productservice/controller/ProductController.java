@@ -5,6 +5,7 @@ import com.Loqal.productservice.entity.ProductDTO;
 import com.Loqal.productservice.entity.ProductOrderRequest;
 import com.Loqal.productservice.repository.ProductRepository;
 import com.Loqal.productservice.services.ProductService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,19 +15,26 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/product")
 public class ProductController {
-    @Autowired
-    private ProductService  productService;
-    @Autowired
-    private ProductRepository repository;
+
+    private final ProductService  productService;
+    private final ProductRepository repository;
 
     @PostMapping
-    public Product create(@RequestBody ProductDTO product, @AuthenticationPrincipal Jwt jwt, Date createdAt,Date updatedAt) {
-        UUID tenenat_id = UUID.fromString(jwt.getClaimAsString("tenent_id"));
-
-        return productService.create(product, tenenat_id,createdAt,updatedAt).getBody();
+    public ResponseEntity<?> create(@RequestBody ProductDTO product, @RequestParam UUID merchantId) {
+        if (product == null || product.name() == null || product.price() <= 0 || product.quantity() < 0) {
+            return ResponseEntity.badRequest().body("Invalid product data provided.");
+        }
+        try{
+            return ResponseEntity.ok(productService.create(product, merchantId)).getBody();
+        }catch(Exception e){
+            return ResponseEntity.badRequest().body("Error creating product: " + e.getMessage());
+        }
     }
+
+
     @PostMapping("/check-and-update-stock")
     public ResponseEntity<?> checkAndUpdateStock(@RequestBody List<ProductOrderRequest> orderRequests) {
         List<String> errors = new ArrayList<>();

@@ -3,47 +3,44 @@ package com.Loqal.productservice.services;
 import com.Loqal.productservice.entity.Product;
 import com.Loqal.productservice.entity.ProductDTO;
 import com.Loqal.productservice.repository.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
-    @Autowired
-    private ProductRepository repo;
+    private final ProductRepository repo;
 
-    public ResponseEntity<Product> create(ProductDTO p, UUID merchantID, Date created, Date updated) {
+    public ResponseEntity<?> create(ProductDTO p, UUID merchantID) {
+        try {
+            Product pd = new Product();
+            pd.setName(p.name());
+            pd.setDescription(p.description());
+            pd.setCategory(p.category());
+            pd.setPrice(p.price());
+            pd.setMerchantId(merchantID);
+            pd.setQuantity(p.quantity());
+            pd.setImage_urls(p.image_urls());
+            pd.setCreated_at(LocalDateTime.now());
 
-        Product pd = new Product();
-        pd.setName(p.name());
-        pd.setDescription(p.description());
-        pd.setCategory(p.category());
-        pd.setPrice(p.price());
-        pd.setMerchantId(merchantID);
-        pd.setQuantity(p.quantity());
-        pd.setImage_urls(p.image_urls());
-        pd.setCreated_at(created);
-        pd.setUpdated_at(updated);
-
-        return ResponseEntity.ok(repo.save(pd));
-
-        ///
+            return ResponseEntity.ok(repo.save(pd));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
     }
 
 
-
-    public ResponseEntity<List<Product>> getAll(UUID tenenant_id) {
-
-        return ResponseEntity.ok(repo.findAllByOrderByTenenantId());
+    public ResponseEntity<List<Product>> getAll(UUID tenant_id) {
+        return ResponseEntity.ok(repo.findAllByMerchantId(tenant_id));
     }
 
     public Optional<Product> getById(UUID id) {
-
         return repo.findById(id);
     }
 
@@ -55,7 +52,7 @@ public class ProductService {
             existing.setPrice(updated.price());
             existing.setQuantity(updated.quantity());
             existing.setImage_urls(updated.image_urls());
-            existing.setUpdated_at(new Date());
+            existing.setUpdated_at(LocalDateTime.now());
             return repo.save(existing);
         }).orElse(null);
     }

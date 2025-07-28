@@ -5,6 +5,7 @@ import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
 
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -38,10 +39,10 @@ public class Product {
     private List<String> image_urls;
 
     @Temporal(TemporalType.TIMESTAMP)
-    private Date created_at;
+    private LocalDateTime created_at;
 
     @Temporal(TemporalType.TIMESTAMP)
-    private Date updated_at;
+    private LocalDateTime updated_at;
 
     @Column(nullable = false)
     private UUID merchantId;
