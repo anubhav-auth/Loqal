@@ -31,6 +31,12 @@ Loqal/
 │   │   ├── product-service/
 │   │   │   ├── src/
 │   │   │   └── tests/
+│   │   ├── payment-service/
+│   │   │   ├── src/
+│   │   │   └── tests/
+│   │   ├── admin-service/
+│   │   │   ├── src/
+│   │   │   └── tests/
 │   │   └── order-service/
 │   │       ├── src/
 │   │       └── tests/
@@ -38,12 +44,6 @@ Loqal/
 │   │   ├── notification-service/
 │   │   │   ├── src/
 │   │   │   └── tests/
-│   │   |── analytics-service/
-│   │   |    ├── src/
-│   │   |    └── tests/
-│   │   └── chat-and-call-service/
-│   │       ├── src/
-│   │       └── tests/
 │   └── database/
 │       ├── migrations/
 │       └── seeds/
