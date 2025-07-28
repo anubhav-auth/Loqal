@@ -47,10 +47,10 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      auth-db:
+      loqal-db:
         condition: service_healthy
     environment:
-      AUTH_DB_URL: ${DB_URL}
+      DB_URL: ${DB_URL}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
@@ -69,19 +69,28 @@ services:
   user-service:
     build: ./backend/java/user-service
     ports:
-      - "8082:8082"
+      - "8082:8082" ## ports are for external access only not needed for internal communication remove later
     depends_on:
-      user-db:
+      loqal-db:
         condition: service_healthy
     environment:
-      USER_DB_URL: ${DB_URL}
+      DB_URL: ${DB_URL}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      DDL_AUTO_SETTING: ${DDL_AUTO_SETTING}
-      USER_SERVER_PORT: ${USER_SERVER_PORT}
-      # This needs to point to where the keys are served from
-      JWT_JWKS_URI: http://auth-service:8081/.well-known/jwks.json
+    networks:
+      - loqal-net
+
+  product-service:
+    build: ./backend/java/product-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      loqal-db:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
       - loqal-net
 
