@@ -32,6 +32,26 @@ services:
           - ~/internal
         strip_path: false
 
+  - name: product-service-public
+    url: http://product-service:8083
+    routes:
+      - name: product-public-routes
+        paths:
+          - ~/product # Matches /product/{id} etc.
+        strip_path: false
+    plugins:
+      - name: jwt # PROTECTED by the JWT plugin
+        config:
+          key_claim_name: kid
+          
+  - name: product-service-internal
+    url: http://product-service:8083
+    routes:
+      - name: product-internal-routes
+        paths:
+          - ~/internal/ # Matches all internal product routes
+        strip_path: false
+
 # 2. Define Consumers (who is using the API)
 consumers:
   - username: auth-service # This replaces 'curl -X POST /consumers'
