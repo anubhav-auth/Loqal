@@ -16,17 +16,17 @@ import java.util.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/product")
+@RequestMapping()
 public class ProductController {
 
     private final ProductService  productService;
-    private final ProductRepository repository;
 
-    @PostMapping
-    public ResponseEntity<?> create(@RequestBody ProductDTO product, @RequestParam UUID merchantId) {
+    @PostMapping("/internal/create")
+    public ResponseEntity<?> create(@RequestBody ProductDTO product, @AuthenticationPrincipal Jwt jwt) {
         if (product == null || product.name() == null || product.price() <= 0 || product.quantity() < 0) {
             return ResponseEntity.badRequest().body("Invalid product data provided.");
         }
+        UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenent_id"));
         try{
             return ResponseEntity.ok(productService.create(product, merchantId)).getBody();
         }catch(Exception e){
@@ -35,58 +35,40 @@ public class ProductController {
     }
 
 
-    @PostMapping("/check-and-update-stock")
+    @PostMapping("/internal/order")
     public ResponseEntity<?> checkAndUpdateStock(@RequestBody List<ProductOrderRequest> orderRequests) {
-        List<String> errors = new ArrayList<>();
-
-        for (ProductOrderRequest request : orderRequests) {
-            Optional<Product> optionalProduct = repository.findById(request.getProductId());
-
-            if (optionalProduct.isEmpty()) {
-                errors.add("Product not found: " + request.getProductId());
-                return ResponseEntity.notFound().build();
-
-            }
-
-            Product product = optionalProduct.get();
-
-            if (product.getQuantity() < request.getQuantity()) {
-                errors.add("Insufficient stock for product: " + product.getName());
-                return ResponseEntity.badRequest().body("not enough items present");
-
-            }
-
-
-            product.setQuantity(product.getQuantity() - request.getQuantity());
-            repository.save(product);
+        if (orderRequests == null || orderRequests.isEmpty()) {
+            return ResponseEntity.badRequest().body("No order requests provided.");
         }
-
-        if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(errors);
-        }
-
-        return ResponseEntity.ok("Stock updated successfully.");
+        return ResponseEntity.ok(productService.checkOrderAndUpdateStock(orderRequests));
     }
 
-
-    @GetMapping
-    public ResponseEntity<?> all(@AuthenticationPrincipal Jwt jwt) {
-        UUID tenenat_id = UUID.fromString(jwt.getClaimAsString("tenent_id"));
-
-        if (tenenat_id == null) return ResponseEntity.internalServerError().body("tenenat_if is not avaialble");
-
-        return ResponseEntity.ok(productService.getAll(tenenat_id)) ;
+    @GetMapping("/internal/products")
+    public ResponseEntity<?> getAllProducts(UUID tenant_id) {
+        return ResponseEntity.ok(productService.getAll(tenant_id)) ;
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/internal/products")
+    public ResponseEntity<?> getAllProducts(@AuthenticationPrincipal Jwt jwt) {
+        UUID tenant_id = UUID.fromString(jwt.getClaimAsString("tenant_id"));
+
+        return ResponseEntity.ok(productService.getAll(tenant_id)) ;
+    }
+
+    @GetMapping("/product/{id}")
     public ResponseEntity<Product> getById(@PathVariable UUID id) {
         return productService.getById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable UUID id, @RequestBody ProductDTO product) {
-        Product updated = productService.update(id, product);
+
+    @PutMapping("internal/product/{id}")
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ProductDTO product, @AuthenticationPrincipal Jwt jwt) {
+        if (product == null || product.name() == null || product.price() <= 0 || product.quantity() < 0) {
+            return ResponseEntity.badRequest().body("Invalid product data provided.");
+        }
+        UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenant_id"));
+        Product updated = productService.update(id, product, merchantId);
         return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
     }
 
