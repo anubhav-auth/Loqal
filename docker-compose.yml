@@ -95,6 +95,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PRODUCT_SERVER_PORT: ${PRODUCT_SERVER_PORT}
+      JWT_JWKS_URI: ${JWT_JWKS_URI}
     networks:
       - loqal-net
 
