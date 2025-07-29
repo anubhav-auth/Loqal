@@ -16,5 +16,6 @@ spring:
 
 server:
   port: ${PRODUCT_SERVER_PORT}
+  
 jwt:
   jwks-uri: ${JWT_JWKS_URI}
