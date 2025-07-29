@@ -1,13 +1,13 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/productdb
-    username: postgres
-    password: 1234
+    url: ${DB_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO_SETTING}
     show-sql: true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
@@ -15,4 +15,4 @@ spring:
     name: ProductService
 
 server:
-  port: 8081
+  port: ${PRODUCT_SERVER_PORT}
