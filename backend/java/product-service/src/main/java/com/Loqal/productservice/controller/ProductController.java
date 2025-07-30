@@ -43,7 +43,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.checkOrderAndUpdateStock(orderRequests));
     }
 
-    @GetMapping("/internal/products")
+    @GetMapping("/products")
     public ResponseEntity<?> getAllProducts(UUID tenant_id) {
         return ResponseEntity.ok(productService.getAll(tenant_id)) ;
     }
