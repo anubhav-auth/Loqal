@@ -1,6 +1,7 @@
 package com.Loqal.orderservice.controller;
 
 import com.Loqal.orderservice.dto.OrderRequest;
+import com.Loqal.orderservice.dto.OrderUpdate;
 import com.Loqal.orderservice.entity.Order;
 import com.Loqal.orderservice.services.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,7 @@ public class OrderController {
 
 
     @GetMapping
-    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
         List<Order> orders = orderService.getOrdersByUserId(userId);
         return ResponseEntity.ok(orders);
@@ -39,15 +40,23 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<Order> getOrderById(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
-        return orderService.getOrderByIdAndUserId(orderId, userId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Order orderByIdAndUserId = (Order) orderService.getOrderByIdAndUserId(orderId, userId);
+        return ResponseEntity.ok(orderByIdAndUserId);
     }
-
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<?> cancelOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
         orderService.cancelOrder(orderId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{orderId}/update")
+    public ResponseEntity<?> updateOrder(@RequestBody OrderUpdate orderUpdate, @AuthenticationPrincipal Jwt jwt) {
+
+        if (!orderUpdate.getCustomerId().equals(UUID.fromString(jwt.getClaimAsString("user_id"))))
+            return  ResponseEntity.badRequest().build();
+
+        orderService.updateOrder(orderUpdate);
         return ResponseEntity.ok().build();
     }
 

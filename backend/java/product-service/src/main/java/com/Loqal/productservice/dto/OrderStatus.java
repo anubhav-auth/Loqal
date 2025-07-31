@@ -1,6 +1,9 @@
-package com.Loqal.orderservice.dto;
+package com.Loqal.productservice.dto;
 
-public enum OrderStatus{
+
+import lombok.AllArgsConstructor;
+
+public enum OrderStatus {
     ORDER_PLACED,
     ORDER_CONFIRMED,
     ORDER_REJECTED,
