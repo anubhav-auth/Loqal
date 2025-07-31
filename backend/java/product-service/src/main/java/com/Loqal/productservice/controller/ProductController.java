@@ -72,4 +72,16 @@ public class ProductController {
         return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
     }
 
+    @DeleteMapping("/internal/product/{id}")
+    public ResponseEntity<?> delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenant_id"));
+        productService.delete(id, merchantId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/products/search")
+    public ResponseEntity<List<Product>> searchProducts(@RequestParam String query) {
+        return ResponseEntity.ok(productService.search(query));
+    }
+
 }
