@@ -17,7 +17,7 @@ public class Product {
     private String description;
     private Category category;
     private double price;
-    private long quantity;
+    private int quantity;
     private List<String> image_urls;
     private Date created_at;
     private Date updated_at;
