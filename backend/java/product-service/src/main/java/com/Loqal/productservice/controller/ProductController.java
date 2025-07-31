@@ -1,5 +1,6 @@
 package com.Loqal.productservice.controller;
 
+import aj.org.objectweb.asm.commons.Remapper;
 import com.Loqal.productservice.entity.Product;
 import com.Loqal.productservice.entity.ProductDTO;
 import com.Loqal.productservice.entity.ProductOrderRequest;
@@ -28,7 +29,7 @@ public class ProductController {
         }
         UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenent_id"));
         try{
-            return ResponseEntity.ok(productService.create(product, merchantId)).getBody();
+            return ResponseEntity.ok(productService.create(product, merchantId));
         }catch(Exception e){
             return ResponseEntity.badRequest().body("Error creating product: " + e.getMessage());
         }
@@ -41,6 +42,14 @@ public class ProductController {
             return ResponseEntity.badRequest().body("No order requests provided.");
         }
         return ResponseEntity.ok(productService.checkOrderAndUpdateStock(orderRequests));
+    }
+
+    @PostMapping("/internal/revertCancelledOrder")
+    public ResponseEntity<?> revertCancelledOrder(@RequestBody List<ProductOrderRequest> orderRequests) {
+        if (orderRequests == null || orderRequests.isEmpty()) {
+            return ResponseEntity.badRequest().body("No order requests provided.");
+        }
+        return ResponseEntity.ok(productService.revertCancelledOrder(orderRequests));
     }
 
     @GetMapping("/products")
@@ -57,9 +66,12 @@ public class ProductController {
 
     @GetMapping("/product/{id}")
     public ResponseEntity<Product> getById(@PathVariable UUID id) {
-        return productService.getById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try{
+            Product byId = productService.getById(id);
+            return ResponseEntity.ok(byId);
+        }catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("internal/product/{id}")
