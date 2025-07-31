@@ -28,19 +28,32 @@ public class OrderController {
     }
 
 
-//    @GetMapping
-//    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
-//        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
-//        List<Order> orders = orderService.getOrdersByUserId(userId);
-//        return ResponseEntity.ok(orders);
-//    }
+    @GetMapping
+    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
+        List<Order> orders = orderService.getOrdersByUserId(userId);
+        return ResponseEntity.ok(orders);
+    }
 
 
-//    @GetMapping("/{orderId}")
-//    public ResponseEntity<Order> getOrderById(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
-//        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
-//        return orderService.getOrderByIdAndUserId(orderId, userId)
-//                .map(ResponseEntity.ok().body("Order found"))
-//                .orElse(ResponseEntity.notFound().build());
-//    }
+    @GetMapping("/{orderId}")
+    public ResponseEntity<Order> getOrderById(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
+        return orderService.getOrderByIdAndUserId(orderId, userId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{orderId}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
+        orderService.cancelOrder(orderId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/merchant")
+    public ResponseEntity<List<Order>> getMerchantOrders(@AuthenticationPrincipal Jwt jwt) {
+        UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenant_id"));
+        return ResponseEntity.ok(orderService.getOrdersByMerchantId(merchantId));
+    }
 }
