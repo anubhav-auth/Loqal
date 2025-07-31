@@ -1,89 +1,59 @@
 package com.Loqal.productservice.services;
 
+import com.Loqal.productservice.dto.OrderEvent;
+import com.Loqal.productservice.dto.OrderStatusUpdate;
 import com.Loqal.productservice.entity.Product;
-import com.Loqal.productservice.entity.ProductDTO;
-import com.Loqal.productservice.entity.ProductOrderRequest;
 import com.Loqal.productservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProductService {
-    private final ProductRepository repo;
 
-    public ResponseEntity<?> create(ProductDTO p, UUID merchantID) {
+    private final ProductRepository productRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${spring.kafka.topic.order-status-updates}")
+    private String orderStatusUpdatesTopic;
+
+    @Transactional
+    @KafkaListener(topics = "${spring.kafka.topic.order-events}", groupId = "product-service-group")
+    public void consumeOrderEvent(OrderEvent orderEvent) {
+        log.info("Received order event for order ID: {}", orderEvent.getOrderId());
         try {
-            Product pd = new Product();
-            pd.setName(p.name());
-            pd.setDescription(p.description());
-            pd.setCategory(p.category());
-            pd.setPrice(p.price());
-            pd.setMerchantId(merchantID);
-            pd.setQuantity(p.quantity());
-            pd.setImage_urls(p.image_urls());
-            pd.setCreated_at(LocalDateTime.now());
+            for (OrderEvent.OrderItem item : orderEvent.getItems()) {
+                Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Product not found with ID: " + item.getProductId()));
 
-            return ResponseEntity.ok(repo.save(pd));
+                log.info("Processing product: {}, requested quantity: {}, available stock: {}", product.getName(), item.getQuantity(), product.getQuantity());
+
+                if (product.getQuantity() < item.getQuantity()) {
+                    throw new RuntimeException("Insufficient stock for product: " + product.getName() + ". Requested: " + item.getQuantity() + ", Available: " + product.getQuantity());
+                }
+
+                product.setQuantity(product.getQuantity() - item.getQuantity());
+                productRepository.save(product);
+                log.info("Decremented stock for product {}. New stock: {}", product.getName(), product.getQuantity());
+            }
+            sendStatusUpdate(orderEvent.getOrderId(), OrderStatusUpdate.OrderStatus.CONFIRMED, "Order processed successfully.");
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
+            log.error("Failed to process order {}: {}", orderEvent.getOrderId(), e.getMessage());
+            sendStatusUpdate(orderEvent.getOrderId(), OrderStatusUpdate.OrderStatus.REJECTED, e.getMessage());
         }
     }
 
-    public ResponseEntity<?> checkOrderAndUpdateStock(List<ProductOrderRequest> requests) {
-        if (requests == null || requests.isEmpty()) {
-            return ResponseEntity.badRequest().body("No order requests provided.");
-        }
-
-        for (ProductOrderRequest request : requests) {
-            Optional<Product> productOpt = repo.findById(request.getProductId());
-            if (productOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body("Product with ID " + request.getProductId() + " not found.");
-            }
-
-            Product product = productOpt.get();
-            if (product.getQuantity() < request.getQuantity()) {
-                return ResponseEntity.badRequest().body("Insufficient stock for product ID " + request.getProductId());
-            }
-
-            product.setQuantity(product.getQuantity() - request.getQuantity());
-            product.setUpdated_at(LocalDateTime.now());
-            repo.save(product);
-        }
-
-        return ResponseEntity.ok("Stock updated successfully.");
-
-    }
-
-
-    public ResponseEntity<List<Product>> getAll(UUID tenant_id) {
-        return ResponseEntity.ok(repo.findAllByMerchantId(tenant_id));
-    }
-
-    public Optional<Product> getById(UUID id) {
-        return repo.findById(id);
-    }
-
-    public Product update(UUID id, ProductDTO updated, UUID tenant_id) {
-        return repo.findById(id).map(existing -> {
-            if(!existing.getMerchantId().equals(tenant_id)) {
-                throw new IllegalArgumentException("Unauthorized to update this product");
-            }
-            existing.setName(updated.name());
-            existing.setDescription(updated.description());
-            existing.setCategory(updated.category());
-            existing.setPrice(updated.price());
-            existing.setQuantity(updated.quantity());
-            existing.setImage_urls(updated.image_urls());
-            existing.setUpdated_at(LocalDateTime.now());
-            return repo.save(existing);
-        }).orElse(null);
+    private void sendStatusUpdate(UUID orderId, OrderStatusUpdate.OrderStatus status, String reason) {
+        OrderStatusUpdate statusUpdate = new OrderStatusUpdate(orderId, status, reason);
+        kafkaTemplate.send(orderStatusUpdatesTopic, statusUpdate);
+        log.info("Published order status update for order ID {}: {}", orderId, status);
     }
 }
-

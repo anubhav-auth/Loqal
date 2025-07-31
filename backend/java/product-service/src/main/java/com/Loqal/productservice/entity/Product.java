@@ -32,7 +32,7 @@ public class Product {
     private double price;
 
     @Column(nullable = false)
-    private long quantity;
+    private int quantity;
 
     @Column(columnDefinition = "jsonb")
     @Convert(converter = StringListConverter.class)
