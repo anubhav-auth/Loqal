@@ -1,4 +1,10 @@
 spring:
+  application:
+    name: product-service
+  kafka:
+    topic:
+      order-events: order-events
+      order-status-updates: order-status-updates
   datasource:
     url: ${DB_URL}
     username: ${POSTGRES_USER}
@@ -10,9 +16,6 @@ spring:
       ddl-auto: ${DDL_AUTO_SETTING}
     show-sql: true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-
-  application:
-    name: ProductService
 
 server:
   port: ${PRODUCT_SERVER_PORT}
