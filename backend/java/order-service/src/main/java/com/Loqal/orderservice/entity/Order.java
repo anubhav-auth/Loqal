@@ -1,5 +1,6 @@
 package com.Loqal.orderservice.entity;
 
+import com.Loqal.orderservice.dto.OrderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -31,7 +32,7 @@ public class Order {
     private double finalAmount;
     private String paymentStatus;
     private Long deliveryAddressId;
-    private String currentStatus;
+    private OrderStatus currentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
