@@ -1,16 +1,31 @@
+server:
+  port: 8082 # Or any other port you prefer
+
 spring:
   application:
-    name: OrderService
-
-
+    name: order-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/order_db
+    username: your_db_user
+    password: your_db_password
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      ddl-auto: update
     show-sql: true
     properties:
-      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
-      open-in-view: false
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    topic:
+      order-events: "order-events"
+      order-status-updates: "order-status-updates"
 
-server:
-  port: 8080
-
+# Logging
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+    com.Loqal.orderservice: DEBUG
