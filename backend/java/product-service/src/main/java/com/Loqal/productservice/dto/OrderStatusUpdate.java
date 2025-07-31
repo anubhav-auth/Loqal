@@ -1,21 +1,12 @@
 package com.Loqal.productservice.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.util.UUID;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class OrderStatusUpdate {
-    private UUID orderId;
-    private OrderStatus status;
-    private String reason;
+public class OrderStatusUpdate{
 
-    public enum OrderStatus {
-        CONFIRMED,
-        REJECTED
+    public OrderStatusUpdate(UUID orderId, OrderStatus status, String reason) {
     }
+    private UUID orderId;          // Unique identifier for the order
+    private OrderStatus status;    // New status of the order
+    private String reason;
 }

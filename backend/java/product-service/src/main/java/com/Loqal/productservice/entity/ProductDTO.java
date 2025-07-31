@@ -18,7 +18,7 @@ public record ProductDTO(
 
     double price,
 
-    long quantity,
+    int quantity,
 
     List<String> image_urls
 ){}
