@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -108,18 +109,46 @@ public class ProductService {
         return productRepository.findAllByMerchantId(tenantId);
     }
 
-    public Remapper getById(UUID id) {
+    public Product getById(UUID id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + id));
     }
 
     public Product update(UUID id, ProductDTO product, UUID merchantId) {
+        if (product == null || product.name() == null || product.price() <= 0 || product.quantity() < 0) {
+            throw new IllegalArgumentException("Invalid product data provided.");
+        }
+
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + id));
+
+        if (!existingProduct.getMerchantId().equals(merchantId)) {
+            throw new RuntimeException("Unauthorized action: User does not own this product.");
+        }
+
+        existingProduct.setName(product.name());
+        existingProduct.setPrice(product.price());
+        existingProduct.setQuantity(product.quantity());
+        return productRepository.save(existingProduct);
     }
 
     public void delete(UUID id, UUID merchantId) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + id));
+
+        if (!product.getMerchantId().equals(merchantId)) {
+            throw new RuntimeException("Unauthorized action: User does not own this product.");
+        }
+
+        productRepository.delete(product);
+        log.info("Deleted product with ID: {}", id);
     }
 
     public List<Product> search(String query) {
-    }
-
-    public Object revertCancelledOrder(List<ProductOrderRequest> orderRequests) {
+        if (query == null || query.isEmpty()) {
+            throw new IllegalArgumentException("Search query cannot be null or empty.");
+        }
+        Optional<List<Product>> allByNameIgnoreCase = productRepository.findAllByNameIgnoreCase(query);
+        return allByNameIgnoreCase.orElseThrow(() -> new RuntimeException("No products found matching query: " + query));
     }
 }
