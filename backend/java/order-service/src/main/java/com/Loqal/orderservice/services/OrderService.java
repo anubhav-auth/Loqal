@@ -6,7 +6,9 @@ import com.Loqal.orderservice.dto.ProductOrderRequest;
 import com.Loqal.orderservice.dto.events.StockReservationResponse;
 import com.Loqal.orderservice.entity.Order;
 import com.Loqal.orderservice.entity.OrderItem;
+import com.Loqal.orderservice.entity.Product;
 import com.Loqal.orderservice.repository.OrderRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +16,10 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,39 +39,69 @@ public class OrderService {
     @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
     private String orderCancellationTopic;
 
-    @Transactional
-    public Order createOrder(OrderRequest orderRequest, UUID userId) {
+    public Mono<Order> createOrder(OrderRequest req, UUID userId) {
         Order order = new Order();
         order.setCustomerId(userId);
-        order.setMerchantId(orderRequest.getMerchantId());
-        order.setCurrentStatus(OrderStatus.ORDER_PENDING);
-        order.setTotalAmount(orderRequest.getTotalAmount());
-        order.setDiscountAmount(orderRequest.getDiscountAmount());
-        order.setFinalAmount(orderRequest.getFinalAmount());
-        order.setPaymentStatus(orderRequest.getPaymentStatus());
-        order.setDeliveryAddressId(orderRequest.getDeliveryAddressId());
         order.setCreatedAt(LocalDateTime.now());
+        order.setCurrentStatus(OrderStatus.ORDER_PENDING);
 
-        List<OrderItem> orderItems = orderRequest.getItems().stream()
-                .map(productDto -> {
-                    OrderItem item = new OrderItem();
-                    item.setProductId(productDto.getProductId());
-                    item.setQuantity(productDto.getQuantity());
-                    item.setPriceAtPurchase(productDto.getPrice());
-                    item.setOrder(order);
-                    return item;
-                })
-                .collect(Collectors.toList());
+        // 1. Create a reactive stream (Flux) from the list of items in the request.
+        return Flux.fromIterable(req.getItems())
+                // 2. For each item, make a non-blocking call to the product-service.
+                //    flatMap is used to handle the async nature of the call.
+                .flatMap(itemReq ->
+                        productServiceWebClient
+                                .get()
+                                .uri("http://product-service/api/products/{id}", itemReq.getProductId())
+                                .retrieve()
+                                .bodyToMono(Product.class)
+                                // 3. Combine the fetched product details with the requested quantity into a Tuple.
+                                .map(product -> Tuples.of(product, itemReq.getQuantity()))
+                                .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + itemReq.getProductId())))
+                )
+                // 4. Collect the results of all the async calls into a single List of Tuples.
+                .collectList()
+                // 5. Once all product details are fetched, proceed to build and save the order.
+                .flatMap(productTuples -> {
+                    // Create OrderItem objects using the trusted price from the product-service.
+                    List<OrderItem> orderItems = productTuples.stream()
+                            .map(tuple -> {
+                                Product product = tuple.getT1();
+                                Integer quantity = tuple.getT2();
 
-        order.setItems(orderItems);
+                                OrderItem orderItem = new OrderItem();
+                                orderItem.setProductId(product.getId());
+                                orderItem.setQuantity(quantity);
+                                orderItem.setPriceAtPurchase(product.getPrice()); // Use the trusted price
+                                orderItem.setOrder(order);
+                                return orderItem;
+                            })
+                            .collect(Collectors.toList());
 
-        Order savedOrder = orderRepository.save(order);
-        outboxService.requestStockReservation(savedOrder);
+                    order.setItems(orderItems);
 
-        log.info("Order {} created in PENDING state for user {}. Awaiting stock confirmation.", savedOrder.getId(), userId);
-        return savedOrder;
+                    // Calculate the total price based on the trusted data.
+                    double totalPrice = orderItems.stream()
+                            .mapToDouble(item -> item.getPriceAtPurchase() * item.getQuantity())
+                            .sum();
+                    order.setFinalAmount(totalPrice);
+
+                    // 6. IMPORTANT: The database and outbox calls are blocking (JPA).
+                    //    We wrap them in Mono.fromCallable and run them on a dedicated scheduler
+                    //    to avoid blocking the main application threads.
+                    return Mono.fromCallable(() -> {
+                        Order savedOrder = orderRepository.save(order);
+                        // This can throw a checked exception, so it's good to handle it here.
+                        try {
+                            outboxService.requestStockReservation(savedOrder);
+                        } catch (Exception e) {
+                            // In a real app, you'd have a more robust error handling/compensation strategy.
+                            throw new RuntimeException("Failed to create outbox event", e);
+                        }
+                        return savedOrder;
+                    }).subscribeOn(Schedulers.boundedElastic());
+                });
     }
-
     // NEW: Kafka Listener to handle the result from ProductService
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.stock-reservation-result}", groupId = "order-service-group")
