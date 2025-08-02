@@ -43,12 +43,15 @@ public class ProductService {
     @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = "product-service-group")
     public void consumeOrderCreationRequest(OrderCreationRequest request) {
 
-
         log.info("Received stock reservation request for order {}", request.getOrderId());
         StockReservationResponse response = new StockReservationResponse();
         response.setOrderId(request.getOrderId());
 
         try {
+            if (processedEventRepository.existsById(request.getOrderId())) {
+                log.warn("Duplicate request for order {}, ignoring.", request.getOrderId());
+                return;
+            }
             processedEventRepository.save(new ProcessedEvent(request.getOrderId()));
             List<ProductOrderRequest> sortedItems = request.getItems().stream()
                     .sorted(Comparator.comparing(ProductOrderRequest::getProductId))
@@ -75,15 +78,25 @@ public class ProductService {
             log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
             response.setStatus("FAILED");
             response.setReason(e.getMessage());
+            response.setReason(e.getMessage());
+            // re-throw the exception to ensure the transaction rolls back.
+            // The afterCompletion hook will still run.
+            throw e;
+        } finally {
+            // Use afterCompletion to guarantee a response is sent.
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == TransactionSynchronization.STATUS_COMMITTED) {
+                        // Only send SUCCESS on actual commit.
+                        kafkaTemplate.send(stockReservationResultTopic, response);
+                    } else if (status == TransactionSynchronization.STATUS_ROLLED_BACK && "FAILED".equals(response.getStatus())) {
+                        // Only send FAILED on actual rollback.
+                        kafkaTemplate.send(stockReservationResultTopic, response);
+                    }
+                }
+            });
         }
-
-        // Send the response only after the transaction commits successfully
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                kafkaTemplate.send(stockReservationResultTopic, response);
-            }
-        });
     }
 
     @Transactional
