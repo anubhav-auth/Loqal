@@ -1,18 +1,26 @@
 package com.Loqal.productservice.services;
 
+import com.Loqal.productservice.dto.events.OrderCreationRequest;
+import com.Loqal.productservice.dto.events.StockReservationResponse;
+import com.Loqal.productservice.entity.ProcessedEvent;
 import com.Loqal.productservice.entity.Product;
 import com.Loqal.productservice.entity.ProductDTO;
 import com.Loqal.productservice.entity.ProductOrderRequest;
 import com.Loqal.productservice.exception.InsufficientStockException;
+import com.Loqal.productservice.repository.ProcessedEventRepository;
 import com.Loqal.productservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,30 +30,62 @@ import java.util.UUID;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProcessedEventRepository processedEventRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
     private String orderCancellationTopic;
 
-    @Transactional
-    public void reserveStockForOrder(List<ProductOrderRequest> orderRequests) {
-        for (ProductOrderRequest item : orderRequests) {
-            Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId()));
+    @Value("${spring.kafka.topic.stock-reservation-result}")
+    private String stockReservationResultTopic;
 
-            if (product.getQuantity() < item.getQuantity()) {
-                throw new InsufficientStockException("Insufficient stock for product: " + product.getName());
+    @Transactional
+    @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = "product-service-group")
+    public void consumeOrderCreationRequest(OrderCreationRequest request) {
+
+
+        log.info("Received stock reservation request for order {}", request.getOrderId());
+        StockReservationResponse response = new StockReservationResponse();
+        response.setOrderId(request.getOrderId());
+
+        try {
+            processedEventRepository.save(new ProcessedEvent(request.getOrderId()));
+            List<ProductOrderRequest> sortedItems = request.getItems().stream()
+                    .sorted(Comparator.comparing(ProductOrderRequest::getProductId))
+                    .toList();
+
+            for (ProductOrderRequest item : sortedItems) {
+                Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId()));
+
+                if (product.getQuantity() < item.getQuantity()) {
+                    throw new InsufficientStockException("Insufficient stock for product ID: " + product.getId());
+                }
+
+                product.setQuantity(product.getQuantity() - item.getQuantity());
+                productRepository.save(product);
             }
 
-            product.setQuantity(product.getQuantity() - item.getQuantity());
-            productRepository.save(product);
-            log.info("Reserved {} units for product {}. New stock: {}", item.getQuantity(), product.getName(), product.getQuantity());
+            response.setStatus("SUCCESS");
+            log.info("Stock successfully reserved for order {}", request.getOrderId());
+
+
+        } catch (Exception e) {
+            // IMPORTANT: The transaction will roll back, undoing any partial stock changes.
+            log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
+            response.setStatus("FAILED");
+            response.setReason(e.getMessage());
         }
+
+        // Send the response only after the transaction commits successfully
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                kafkaTemplate.send(stockReservationResultTopic, response);
+            }
+        });
     }
 
-    /**
-     * REFACTORED: Combined stock revert logic into a single, reliable Kafka listener.
-     * The synchronous endpoint was removed to prevent inconsistencies.
-     */
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = "product-service-group")
     public void consumeOrderCancellation(List<ProductOrderRequest> itemsToRevert) {
@@ -80,7 +120,7 @@ public class ProductService {
 
     public List<Product> getAllByMerchant(UUID tenantId) {
         // REFACTORED: Return an empty list instead of throwing an exception.
-        return productRepository.findAllByMerchantId(tenantId).orElse(Collections.emptyList());
+        return productRepository.findAllByMerchantId(tenantId);
     }
 
     public Product getById(UUID id) {

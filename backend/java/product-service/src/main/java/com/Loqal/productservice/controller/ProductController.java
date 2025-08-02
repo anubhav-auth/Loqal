@@ -23,24 +23,6 @@ public class ProductController {
     private final ProductService productService;
 
     // =================================================================
-    // == INTERNAL SERVICE-TO-SERVICE ENDPOINT
-    // =================================================================
-
-    @PostMapping("/internal/reservations")
-    public ResponseEntity<?> reserveStock(@RequestBody List<ProductOrderRequest> orderRequests) {
-        try {
-            productService.reserveStockForOrder(orderRequests);
-            return ResponseEntity.ok().body("Stock reserved successfully.");
-        } catch (InsufficientStockException e) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing stock reservation: " + e.getMessage());
-        }
-    }
-
-    // REMOVED: Redundant and unnecessary endpoints like /cancellations/revert, /internal/order, etc.
-
-    // =================================================================
     // == MERCHANT/USER FACING ENDPOINTS
     // =================================================================
 

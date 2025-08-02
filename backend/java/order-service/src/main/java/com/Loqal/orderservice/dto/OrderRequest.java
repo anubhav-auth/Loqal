@@ -9,9 +9,8 @@ import java.util.UUID;
 
 @Data
 public class OrderRequest {
-    private UUID customerId;
     private UUID merchantId;
-    private List<Product> items;    // Use 'itemsOrdered' as per your mapping preference
+    private List<ProductOrderRequest> items;
     private Double totalAmount;
     private Double discountAmount;
     private Double finalAmount;

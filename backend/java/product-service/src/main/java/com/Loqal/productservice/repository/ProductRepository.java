@@ -16,7 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdWithPessimisticLock(UUID id);
 
-    Optional<List<Product>> findAllByMerchantId(UUID merchantId);
+    List<Product> findAllByMerchantId(UUID merchantId);
 
     Optional<List<Product>> findAllByNameIgnoreCase(String query);
 }
