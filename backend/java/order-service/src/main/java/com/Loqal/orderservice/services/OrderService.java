@@ -2,13 +2,21 @@ package com.Loqal.orderservice.services;
 
 import com.Loqal.orderservice.dto.*;
 import com.Loqal.orderservice.entity.Order;
+import com.Loqal.orderservice.exception.InvalidOrderStatusException;
 import com.Loqal.orderservice.repository.OrderRepository;
 import com.nimbusds.jose.util.Pair;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,27 +30,55 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final WebClient productServiceWebClient; // Inject the specific WebClient bean
 
     @Transactional
     public Order createOrder(OrderRequest orderRequest, UUID userId) {
+        List<ProductOrderRequest> itemsToReserve = orderRequest.getItemsOrdered().stream()
+                .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
+                .collect(Collectors.toList());
+
+        // Step 1: Synchronously call ProductService to reserve stock using WebClient
+        try {
+            productServiceWebClient.post()
+                    .uri("/internal/products/reservations")
+                    .bodyValue(itemsToReserve)
+                    .retrieve()
+                    // Handle specific status codes if needed
+                    .onStatus(HttpStatusCode::is4xxClientError, response ->
+                            response.bodyToMono(String.class).flatMap(errorBody ->
+                                    Mono.error(new WebClientResponseException(
+                                            response.statusCode().value(),
+                                            "Client Error: " + errorBody,
+                                            response.headers().asHttpHeaders(),
+                                            errorBody.getBytes(),
+                                            null
+                                    ))
+                            )
+                    )
+                    .toBodilessEntity() // We don't need the response body, just the status
+                    .block(); // <-- This makes the reactive call synchronous. It waits for the result.
+
+        } catch (WebClientResponseException e) {
+            // The ProductService returned an error (e.g., 422 for insufficient stock).
+            throw new RuntimeException("Failed to reserve stock: " + e.getResponseBodyAsString());
+        }
+
+        // Step 2: Stock was reserved successfully. Now, create the confirmed order.
         Order order = new Order();
         order.setCustomerId(userId);
-        order.setCurrentStatus(OrderStatus.ORDER_PENDING);
+        order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
         order.setCreatedAt(LocalDateTime.now());
+        // ... set items, total price, etc. ...
 
         Order savedOrder = orderRepository.save(order);
 
-        OrderEvent orderEvent = new OrderEvent(
-                savedOrder.getId(),
-                orderRequest.getItemsOrdered().stream()
-                        .map(item -> new OrderEvent.OrderItem(item.getId(), item.getQuantity()))
-                        .collect(Collectors.toList())
-        );
-
-        kafkaTemplate.send("order-events", orderEvent);
+        // Step 3 (Optional): Publish an event for other downstream services.
+        // kafkaTemplate.send("order-confirmed-events", ...);
 
         return savedOrder;
     }
+
 
     @KafkaListener(topics = "${spring.kafka.topic.order-status-updates}", groupId = "order-service-group")
     public void consumeOrderStatusUpdate(OrderStatusUpdate statusUpdate) {
@@ -94,18 +130,25 @@ public class OrderService {
     @Transactional
     public void cancelOrder(UUID orderId, UUID userId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
         if (!order.getCustomerId().equals(userId)) {
-            throw new RuntimeException("Unauthorized action: User does not own this order.");
+            throw new RuntimeException("Unauthorized action.");
+        }
+        if (order.getCurrentStatus() != OrderStatus.ORDER_CONFIRMED) {
+            throw new RuntimeException("Order cannot be cancelled in its current state.");
         }
 
-        Pair<UUID, List<ProductOrderRequest>> products = Pair.of(orderId, order.getItemsOrdered().stream().map(item -> new ProductOrderRequest(item.getId(), item.getQuantity())).collect(Collectors.toList()));
-        try {
-            kafkaTemplate.send("order-cancel", products);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send order cancellation event: " + e.getMessage());
-        }
+        order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        List<ProductOrderRequest> itemsToRevert = order.getItemsOrdered().stream()
+                .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
+                .collect(Collectors.toList());
+
+        // Use Kafka to asynchronously notify ProductService to revert stock
+        kafkaTemplate.send("order-cancellation-events", itemsToRevert);
     }
 
     public List<Order> getOrdersByMerchantId(UUID merchantId) {
