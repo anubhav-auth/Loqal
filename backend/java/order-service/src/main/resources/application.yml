@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: order-service
+    # Redis Configuration
+  data:
+    redis:
+        host: localhost
+        port: 6379
   datasource:
     url: jdbc:postgresql://localhost:5432/order_db
     username: your_db_user

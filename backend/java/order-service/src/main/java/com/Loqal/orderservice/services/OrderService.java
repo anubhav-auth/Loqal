@@ -28,6 +28,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final WebClient productServiceWebClient;
+    private final CompensationService compensationService;
 
     @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
     private String orderCancellationTopic;
@@ -62,7 +63,12 @@ public class OrderService {
         order.setCustomerId(userId);
         order.setMerchantId(orderRequest.getMerchantId());
         order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
-        // ... map items, total price, etc. ...
+        order.setItems(orderRequest.getItems());
+        order.setTotalAmount(orderRequest.getTotalAmount());
+        order.setDiscountAmount(orderRequest.getDiscountAmount());
+        order.setFinalAmount(orderRequest.getFinalAmount());
+        order.setPaymentStatus(orderRequest.getPaymentStatus());
+        order.setDeliveryAddressId(orderRequest.getDeliveryAddressId());
         order.setCreatedAt(LocalDateTime.now());
 
         // ADDED: Saga Compensation Logic
@@ -73,8 +79,7 @@ public class OrderService {
             return savedOrder;
         } catch (Exception e) {
             log.error("CRITICAL: Failed to save order {} after reserving stock. Triggering compensation.", order.getId(), e);
-            // COMPENSATING ACTION: Revert the stock reservation by publishing a cancellation event.
-            kafkaTemplate.send(orderCancellationTopic, itemsToReserve);
+            compensationService.scheduleStockReversion(itemsToReserve);
             throw new RuntimeException("Could not create order. Stock reservation has been reverted.");
         }
     }
@@ -96,7 +101,7 @@ public class OrderService {
         orderRepository.save(order);
 
         // Map order items to the request DTO for the product service
-        List<ProductOrderRequest> itemsToRevert = order.getItemsOrdered().stream()
+        List<ProductOrderRequest> itemsToRevert = order.getItems().stream()
                 .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
                 .collect(Collectors.toList());
 
@@ -112,7 +117,7 @@ public class OrderService {
     }
 
     public Order getOrderByIdAndUserId(UUID orderId, UUID userId) {
-        return orderRepository.findAllByCustomerIdAndId(orderId, userId)
+        return orderRepository.findAllByCustomerIdAndId(userId, orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found or you do not have permission to view it."));
     }
 
