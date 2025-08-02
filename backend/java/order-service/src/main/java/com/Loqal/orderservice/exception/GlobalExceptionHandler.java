@@ -1,5 +1,6 @@
 package com.Loqal.orderservice.exception;
 
+import com.Loqal.orderservice.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -7,13 +8,14 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handles validation errors
+    // This handler is excellent. No changes needed.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -22,22 +24,45 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
-    // Handles business logic exceptions
+    // These specific business exception handlers are also good.
+    // For consistency, we can adopt the standard ErrorResponse object.
     @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<Object> handleInsufficientStock(InsufficientStockException ex, WebRequest request) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException ex, WebRequest request) {
+        ErrorResponse errorDetails = new ErrorResponse(
+                LocalDateTime.now().toString(),
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                "Insufficient Stock",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(errorDetails, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
-    // Handles invalid state transition exceptions
     @ExceptionHandler(InvalidOrderStatusException.class)
-    public ResponseEntity<Object> handleInvalidOrderStatus(InvalidOrderStatusException ex, WebRequest request) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.CONFLICT);
+    public ResponseEntity<ErrorResponse> handleInvalidOrderStatus(InvalidOrderStatusException ex, WebRequest request) {
+        ErrorResponse errorDetails = new ErrorResponse(
+                LocalDateTime.now().toString(),
+                HttpStatus.CONFLICT.value(),
+                "Invalid State",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(errorDetails, HttpStatus.CONFLICT);
     }
 
-
-    // Generic handler for other exceptions
+    // REFINED: This is the hardened generic handler.
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGlobalException(Exception ex, WebRequest request) {
-        return new ResponseEntity<>("An unexpected error occurred: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
+        // Log the full exception for debugging purposes
+        // log.error("An unexpected error occurred:", ex);
+
+        ErrorResponse errorDetails = new ErrorResponse(
+                LocalDateTime.now().toString(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Internal Server Error",
+                "An unexpected internal error occurred. Please contact support.", // IMPORTANT: Do not leak ex.getMessage()
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
