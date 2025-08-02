@@ -35,7 +35,6 @@ public class OrderController {
             @Valid @RequestBody OrderRequest orderRequest,
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             String cacheKey = IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
             String cachedResponse = redisTemplate.opsForValue().get(cacheKey);
@@ -44,15 +43,15 @@ public class OrderController {
                 log.info("Idempotency hit for key: {}. Returning cached response.", idempotencyKey);
                 try {
                     Order cachedOrder = objectMapper.readValue(cachedResponse, Order.class);
-                    // Return OK for a cached response, not CREATED
-                    return new ResponseEntity<>(cachedOrder, HttpStatus.OK);
-                } catch (JsonProcessingException e) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error reading cached response.");
+                    return ResponseEntity.ok(cachedOrder);
+                } catch (JsonProcessingException  e) {
+                    log.error("Failed to deserialize cached idempotent response for key: {}", idempotencyKey, e);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing cached response.");
                 }
             }
         }
 
-        UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
         try {
             Order createdOrder = orderService.createOrder(orderRequest, userId);
 
@@ -77,20 +76,20 @@ public class OrderController {
 
     @GetMapping("/my-orders")
     public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
         return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
     }
 
     @GetMapping("/{orderId}")
     public ResponseEntity<Order> getOrderById(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
         return ResponseEntity.ok(orderService.getOrderByIdAndUserId(orderId, userId));
     }
 
     @DeleteMapping("/{orderId}/cancellation")
     public ResponseEntity<Void> cancelOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
         // FIXED: Using UUID for orderId and getting userId from JWT for security
-        UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
         try {
             orderService.cancelOrder(orderId, userId);
             return ResponseEntity.noContent().build();
