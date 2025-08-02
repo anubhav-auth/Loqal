@@ -23,12 +23,12 @@ public class Order {
 
     private UUID deliveryAgentId;
 
-    private List<Product> itemsOrdered;
+    private List<Product> items;
     private double totalAmount;
     private double discountAmount;
     private double finalAmount;
     private String paymentStatus;
-    private Long deliveryAddressId;
+    private UUID deliveryAddressId;
     private OrderStatus currentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
