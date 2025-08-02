@@ -3,10 +3,14 @@ package com.Loqal.orderservice.repository;
 import com.Loqal.orderservice.entity.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
     Optional<List<Order>> findAllByCustomerId(UUID customerId);
+
     Optional<List<Order>> findAllByMerchantId(UUID customerId);
+
     Optional<Order> findAllByCustomerIdAndId(UUID customerId, UUID orderId);
 }

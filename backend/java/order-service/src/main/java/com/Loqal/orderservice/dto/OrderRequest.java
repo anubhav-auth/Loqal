@@ -3,9 +3,9 @@ package com.Loqal.orderservice.dto;
 import com.Loqal.orderservice.entity.Product;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.time.LocalDateTime;
 
 @Data
 public class OrderRequest {
