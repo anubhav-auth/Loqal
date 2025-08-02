@@ -1,6 +1,6 @@
 package com.Loqal.orderservice.dto;
 
-public enum OrderStatus{
+public enum OrderStatus {
     ORDER_PLACED,
     ORDER_CONFIRMED,
     ORDER_REJECTED,

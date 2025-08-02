@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Table(name="orders")
+@Table(name = "orders")
 @Data
 public class Order {
     @Id
