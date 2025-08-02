@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class OrderRequest {
     private UUID customerId;
     private UUID merchantId;
+
     private List<Product> itemsOrdered;    // Use 'itemsOrdered' as per your mapping preference
     private Double totalAmount;
     private Double discountAmount;

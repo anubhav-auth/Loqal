@@ -6,6 +6,7 @@ import com.Loqal.productservice.dto.OrderStatusUpdate;
 import com.Loqal.productservice.entity.Product;
 import com.Loqal.productservice.entity.ProductDTO;
 import com.Loqal.productservice.entity.ProductOrderRequest;
+import com.Loqal.productservice.exception.InsufficientStockException;
 import com.Loqal.productservice.repository.ProductRepository;
 import com.nimbusds.jose.util.Pair;
 import lombok.RequiredArgsConstructor;
@@ -32,59 +33,57 @@ public class ProductService {
     private String orderStatusUpdatesTopic;
 
     @Transactional
-    @KafkaListener(topics = "${spring.kafka.topic.order-events}", groupId = "product-service-group")
-    public void consumeOrderEvent(OrderEvent orderEvent) {
-        log.info("Received order event for order ID: {}", orderEvent.getOrderId());
-        try {
-            for (OrderEvent.OrderItem item : orderEvent.getItems()) {
-                Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
-                        .orElseThrow(() -> new RuntimeException("Product not found with ID: " + item.getProductId()));
+    public void reserveStockForOrder(List<ProductOrderRequest> orderRequests) {
+        for (ProductOrderRequest item : orderRequests) {
+            // The pessimistic lock is applied by the repository method.
+            Product product = productRepository.findByIdWithPessimisticLock(item.getId())
+                    .orElseThrow(() -> new RuntimeException("Product not found: " + item.getId()));
 
-                log.info("Processing product: {}, requested quantity: {}, available stock: {}", product.getName(), item.getQuantity(), product.getQuantity());
-
-                if (product.getQuantity() < item.getQuantity()) {
-                    throw new RuntimeException("Insufficient stock for product: " + product.getName() + ". Requested: " + item.getQuantity() + ", Available: " + product.getQuantity());
-                }
-
-                product.setQuantity(product.getQuantity() - item.getQuantity());
-                productRepository.save(product);
-                log.info("Decremented stock for product {}. New stock: {}", product.getName(), product.getQuantity());
+            if (product.getQuantity() < item.getQuantity()) {
+                throw new InsufficientStockException("Insufficient stock for product: " + product.getName());
             }
-            sendStatusUpdate(orderEvent.getOrderId(), OrderStatus.ORDER_CONFIRMED, "Order processed successfully.");
-        } catch (Exception e) {
-            log.error("Failed to process order {}: {}", orderEvent.getOrderId(), e.getMessage());
-            sendStatusUpdate(orderEvent.getOrderId(), OrderStatus.ORDER_REJECTED, e.getMessage());
+
+            product.setQuantity(product.getQuantity() - item.getQuantity());
+            productRepository.save(product);
+            log.info("Reserved {} units of stock for product {}. New stock: {}", item.getQuantity(), product.getName(), product.getQuantity());
         }
     }
+
+    /**
+     * Reverts stock for a cancelled order. This also needs to be transactional.
+     */
+    @Transactional
+    public void revertStockForCancelledOrder(List<ProductOrderRequest> orderRequests) {
+        for (ProductOrderRequest item : orderRequests) {
+            Product product = productRepository.findById(item.getId())
+                    .orElseThrow(() -> new RuntimeException("Product not found: " + item.getId())); // Or handle more gracefully
+
+            product.setQuantity(product.getQuantity() + item.getQuantity());
+            productRepository.save(product);
+        }
+    }
+
+
 
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = "product-service-group")
-    public void consumeOrderCancellation(Pair<UUID, List<ProductOrderRequest>> products) {
-        log.info("Received order cancel request");
-        UUID orderId = products.getLeft();
+    public void consumeOrderCancellation(List<ProductOrderRequest> itemsToRevert) {
+        log.info("Received order cancellation event to revert stock.");
         try {
-            for (ProductOrderRequest item : products.getRight()) {
-
+            for (ProductOrderRequest item : itemsToRevert) {
                 Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
-                        .orElseThrow(() -> new RuntimeException("Product not found with ID: " + item.getProductId()));
-
-                log.info("Processing product: {}, requested quantity: {}, available stock: {}", product.getName(), item.getQuantity(), product.getQuantity());
+                        .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId()));
 
                 product.setQuantity(product.getQuantity() + item.getQuantity());
                 productRepository.save(product);
-                log.info("Incremented stock for product {}. New stock: {}", product.getName(), product.getQuantity());
+                log.info("Reverted {} units of stock for cancelled order. Product: {}. New stock: {}", item.getQuantity(), product.getName(), product.getQuantity());
             }
-            sendStatusUpdate(orderId, OrderStatus.ORDER_CANCELLED, "Order processed successfully.");
         } catch (Exception e) {
-            log.error("Failed to cancel order {}: {}", orderId, e.getMessage());
-            sendStatusUpdate(orderId, OrderStatus.ORDER_REJECTED, e.getMessage());
+            // If this fails, the message will be re-processed by Kafka.
+            // A Dead Letter Queue (DLQ) is needed here for production to handle repeated failures.
+            log.error("Failed to process order cancellation event. Error: {}", e.getMessage());
+            throw e; // Re-throw the exception to trigger Kafka's retry mechanism.
         }
-    }
-
-    private void sendStatusUpdate(UUID orderId, OrderStatus status, String reason) {
-        OrderStatusUpdate statusUpdate = new OrderStatusUpdate(orderId, status, reason);
-        kafkaTemplate.send(orderStatusUpdatesTopic, statusUpdate);
-        log.info("Published order status update for order ID {}: {}", orderId, status);
     }
 
     public Object create(ProductDTO product, UUID merchantId) {

@@ -1,10 +1,7 @@
 package com.Loqal.orderservice.entity;
 
 import com.Loqal.orderservice.dto.OrderStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 
@@ -35,4 +32,6 @@ public class Order {
     private OrderStatus currentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @Version
+    private Long version;
 }

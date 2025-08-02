@@ -10,27 +10,40 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
-    @Value("${services.user-service.url}")
-    private String userServiceUrl;
 
-    @Value("${services.merchant-service.url}")
-    private String merchantServiceUrl;
-
+    // You can define a separate WebClient bean for each service for clarity
     @Bean
-    public WebClient webClient(CircuitBreakerRegistry circuitBreakerRegistry) {
-        CircuitBreaker userServiceCircuitBreaker = circuitBreakerRegistry.circuitBreaker("userService");
-        CircuitBreaker merchantServiceCircuitBreaker = circuitBreakerRegistry.circuitBreaker("merchantService");
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
 
-        return WebClient.builder()
-                .baseUrl(userServiceUrl) // Default base URL; override per service
-                .filter((request, next) -> {
-                    CircuitBreaker circuitBreaker = request.url().toString().contains("merchant-service")
-                            ? merchantServiceCircuitBreaker
-                            : userServiceCircuitBreaker;
+    // A dedicated WebClient bean for Product Service
+    @Bean
+    public WebClient productServiceWebClient(WebClient.Builder webClientBuilder,
+                                             CircuitBreakerRegistry circuitBreakerRegistry,
+                                             @Value("${services.product-service.url}") String productServiceUrl) {
 
-                    return next.exchange(request)
-                            .transformDeferred(CircuitBreakerOperator.of(circuitBreaker));
-                })
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("productService");
+
+        return webClientBuilder
+                .baseUrl(productServiceUrl)
+                .filter((request, next) -> next.exchange(request)
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
+                .build();
+    }
+
+    // A dedicated WebClient bean for User Service
+    @Bean
+    public WebClient userServiceWebClient(WebClient.Builder webClientBuilder,
+                                          CircuitBreakerRegistry circuitBreakerRegistry,
+                                          @Value("${services.user-service.url}") String userServiceUrl) {
+
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("userService");
+
+        return webClientBuilder
+                .baseUrl(userServiceUrl)
+                .filter((request, next) -> next.exchange(request)
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
                 .build();
     }
 }
