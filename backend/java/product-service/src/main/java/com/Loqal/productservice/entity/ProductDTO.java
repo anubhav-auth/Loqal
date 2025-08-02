@@ -1,4 +1,5 @@
 package com.Loqal.productservice.entity;
+
 import java.util.List;
 
 public record ProductDTO(

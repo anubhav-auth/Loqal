@@ -2,18 +2,15 @@ package com.Loqal.productservice.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.GenericGenerator;
-
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 
 @Data
 @Entity
-@Table(name="products" )
+@Table(name = "products")
 
 public class Product {
     @Id
