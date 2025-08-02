@@ -3,17 +3,17 @@ package com.Loqal.orderservice.services;
 import com.Loqal.orderservice.dto.OrderRequest;
 import com.Loqal.orderservice.dto.OrderStatus;
 import com.Loqal.orderservice.dto.ProductOrderRequest;
+import com.Loqal.orderservice.dto.events.StockReservationResponse;
 import com.Loqal.orderservice.entity.Order;
+import com.Loqal.orderservice.entity.OrderItem;
 import com.Loqal.orderservice.repository.OrderRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,44 +26,19 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+//    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final WebClient productServiceWebClient;
-    private final CompensationService compensationService;
+    private final OutboxService outboxService;
 
     @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
     private String orderCancellationTopic;
 
     @Transactional
     public Order createOrder(OrderRequest orderRequest, UUID userId) {
-        List<ProductOrderRequest> itemsToReserve = orderRequest.getItems().stream()
-                .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
-                .collect(Collectors.toList());
-
-        // Step 1: Synchronously call ProductService to reserve stock
-        try {
-            productServiceWebClient.post()
-                    .uri("/internal/reservations")
-                    .bodyValue(itemsToReserve)
-                    .retrieve()
-                    .onStatus(HttpStatusCode::isError, response ->
-                            response.bodyToMono(String.class).flatMap(errorBody ->
-                                    Mono.error(new RuntimeException("Product service failed: " + errorBody))
-                            )
-                    )
-                    .toBodilessEntity()
-                    .block(); // Make the call synchronous
-
-        } catch (Exception e) {
-            log.error("Failed to reserve stock during order creation. Aborting.", e);
-            throw new RuntimeException("Failed to reserve stock: " + e.getMessage());
-        }
-
-        // Step 2: Stock was reserved successfully. Now, create the confirmed order.
         Order order = new Order();
         order.setCustomerId(userId);
         order.setMerchantId(orderRequest.getMerchantId());
-        order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
-        order.setItems(orderRequest.getItems());
+        order.setCurrentStatus(OrderStatus.ORDER_PENDING);
         order.setTotalAmount(orderRequest.getTotalAmount());
         order.setDiscountAmount(orderRequest.getDiscountAmount());
         order.setFinalAmount(orderRequest.getFinalAmount());
@@ -71,17 +46,48 @@ public class OrderService {
         order.setDeliveryAddressId(orderRequest.getDeliveryAddressId());
         order.setCreatedAt(LocalDateTime.now());
 
-        // ADDED: Saga Compensation Logic
-        try {
-            Order savedOrder = orderRepository.save(order);
-            log.info("Order {} created successfully for user {}", savedOrder.getId(), userId);
-            // Optionally publish an "order-confirmed" event here
-            return savedOrder;
-        } catch (Exception e) {
-            log.error("CRITICAL: Failed to save order {} after reserving stock. Triggering compensation.", order.getId(), e);
-            compensationService.scheduleStockReversion(itemsToReserve);
-            throw new RuntimeException("Could not create order. Stock reservation has been reverted.");
+        List<OrderItem> orderItems = orderRequest.getItems().stream()
+                .map(productDto -> {
+                    OrderItem item = new OrderItem();
+                    item.setProductId(productDto.getProductId());
+                    item.setQuantity(productDto.getQuantity());
+                    item.setPriceAtPurchase(productDto.getPrice());
+                    item.setOrder(order);
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        order.setItems(orderItems);
+
+        Order savedOrder = orderRepository.save(order);
+        outboxService.requestStockReservation(savedOrder);
+
+        log.info("Order {} created in PENDING state for user {}. Awaiting stock confirmation.", savedOrder.getId(), userId);
+        return savedOrder;
+    }
+
+    // NEW: Kafka Listener to handle the result from ProductService
+    @Transactional
+    @KafkaListener(topics = "${spring.kafka.topic.stock-reservation-result}", groupId = "order-service-group")
+    public void consumeStockReservationResult(StockReservationResponse response) {
+        log.info("Received stock reservation result for order {}: {}", response.getOrderId(), response.getStatus());
+
+        Order order = orderRepository.findById(response.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Received stock result for non-existent order: " + response.getOrderId()));
+
+        if (order.getCurrentStatus() != OrderStatus.ORDER_PENDING) {
+            log.warn("Received stock result for order {} which is no longer in PENDING state. Current state: {}. Ignoring.", order.getId(), order.getCurrentStatus());
+            return;
         }
+
+        if ("SUCCESS".equals(response.getStatus())) {
+            order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
+        } else {
+            order.setCurrentStatus(OrderStatus.ORDER_REJECTED);
+            // You could store the failure reason from response.getReason() in the order entity.
+        }
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
     }
 
     @Transactional
@@ -92,28 +98,26 @@ public class OrderService {
         if (!order.getCustomerId().equals(userId)) {
             throw new SecurityException("Unauthorized: You do not own this order.");
         }
-        if (order.getCurrentStatus() != OrderStatus.ORDER_CONFIRMED) {
+        if (order.getCurrentStatus() != OrderStatus.ORDER_CONFIRMED && order.getCurrentStatus() != OrderStatus.ORDER_PENDING) {
             throw new IllegalStateException("Order cannot be cancelled in its current state.");
         }
 
+
+        if (order.getCurrentStatus() == OrderStatus.ORDER_CONFIRMED) {
+            outboxService.requestStockReversion(order.getItems().stream()
+                    .map(item -> new ProductOrderRequest(item.getProductId(), item.getPriceAtPurchase(), item.getQuantity()))
+                    .collect(Collectors.toList()));
+
+            log.info("Scheduled stock reversion for cancelled order {}", orderId);
+        }
         order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
-
-        // Map order items to the request DTO for the product service
-        List<ProductOrderRequest> itemsToRevert = order.getItems().stream()
-                .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
-                .collect(Collectors.toList());
-
-        // FIXED: Use the correct, standardized Kafka topic name
-        kafkaTemplate.send(orderCancellationTopic, itemsToRevert);
-        log.info("Published cancellation event for order {}", orderId);
     }
 
     // Other methods...
     public List<Order> getOrdersByUserId(UUID userId) {
-        return orderRepository.findAllByCustomerId(userId)
-                .orElseThrow(() -> new RuntimeException("No orders found for user ID: " + userId));
+        return orderRepository.findAllByCustomerId(userId);
     }
 
     public Order getOrderByIdAndUserId(UUID orderId, UUID userId) {
@@ -122,7 +126,6 @@ public class OrderService {
     }
 
     public List<Order> getOrdersByMerchantId(UUID merchantId) {
-        return orderRepository.findAllByMerchantId(merchantId)
-                .orElseThrow(() -> new RuntimeException("No orders found for merchant ID: " + merchantId));
+        return orderRepository.findAllByMerchantId(merchantId);
     }
 }
