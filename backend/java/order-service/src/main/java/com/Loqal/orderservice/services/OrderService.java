@@ -2,129 +2,79 @@ package com.Loqal.orderservice.services;
 
 import com.Loqal.orderservice.dto.*;
 import com.Loqal.orderservice.entity.Order;
-import com.Loqal.orderservice.exception.InvalidOrderStatusException;
 import com.Loqal.orderservice.repository.OrderRepository;
-import com.nimbusds.jose.util.Pair;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final WebClient productServiceWebClient; // Inject the specific WebClient bean
+    private final WebClient productServiceWebClient;
+
+    @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
+    private String orderCancellationTopic;
 
     @Transactional
     public Order createOrder(OrderRequest orderRequest, UUID userId) {
-        List<ProductOrderRequest> itemsToReserve = orderRequest.getItemsOrdered().stream()
+        List<ProductOrderRequest> itemsToReserve = orderRequest.getItems().stream()
                 .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
                 .collect(Collectors.toList());
 
-        // Step 1: Synchronously call ProductService to reserve stock using WebClient
+        // Step 1: Synchronously call ProductService to reserve stock
         try {
             productServiceWebClient.post()
-                    .uri("/internal/products/reservations")
+                    .uri("/internal/reservations")
                     .bodyValue(itemsToReserve)
                     .retrieve()
-                    // Handle specific status codes if needed
-                    .onStatus(HttpStatusCode::is4xxClientError, response ->
+                    .onStatus(HttpStatusCode::isError, response ->
                             response.bodyToMono(String.class).flatMap(errorBody ->
-                                    Mono.error(new WebClientResponseException(
-                                            response.statusCode().value(),
-                                            "Client Error: " + errorBody,
-                                            response.headers().asHttpHeaders(),
-                                            errorBody.getBytes(),
-                                            null
-                                    ))
+                                    Mono.error(new RuntimeException("Product service failed: " + errorBody))
                             )
                     )
-                    .toBodilessEntity() // We don't need the response body, just the status
-                    .block(); // <-- This makes the reactive call synchronous. It waits for the result.
+                    .toBodilessEntity()
+                    .block(); // Make the call synchronous
 
-        } catch (WebClientResponseException e) {
-            // The ProductService returned an error (e.g., 422 for insufficient stock).
-            throw new RuntimeException("Failed to reserve stock: " + e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Failed to reserve stock during order creation. Aborting.", e);
+            throw new RuntimeException("Failed to reserve stock: " + e.getMessage());
         }
 
         // Step 2: Stock was reserved successfully. Now, create the confirmed order.
         Order order = new Order();
         order.setCustomerId(userId);
+        order.setMerchantId(orderRequest.getMerchantId());
         order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
+        // ... map items, total price, etc. ...
         order.setCreatedAt(LocalDateTime.now());
-        // ... set items, total price, etc. ...
 
-        Order savedOrder = orderRepository.save(order);
-
-        // Step 3 (Optional): Publish an event for other downstream services.
-        // kafkaTemplate.send("order-confirmed-events", ...);
-
-        return savedOrder;
-    }
-
-
-    @KafkaListener(topics = "${spring.kafka.topic.order-status-updates}", groupId = "order-service-group")
-    public void consumeOrderStatusUpdate(OrderStatusUpdate statusUpdate) {
-        Order order = orderRepository.findById(statusUpdate.getOrderId())
-                .orElseThrow(() -> new RuntimeException("Order not found"));
-        order.setCurrentStatus(statusUpdate.getStatus());
-        order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.save(order);
-    }
-
-    public List<Order> getOrdersByUserId(UUID userId) {
-        Optional<List<Order>> allByCustomerId = orderRepository.findAllByCustomerId(userId);
-
-        return allByCustomerId.orElseThrow(() -> new RuntimeException("No orders found for user ID: " + userId));
-    }
-
-    public Object getOrderByIdAndUserId(UUID orderId, UUID userId) {
-        Optional<List<Order>> order = orderRepository.findAllByCustomerIdAndId(userId, orderId);
-        if (order.isPresent() && order.get().get(0).getCustomerId().equals(userId)) {
-            return order.get();
-        } else {
-            return new RuntimeException("Order not found for user ID: " + userId + " and order ID: " + orderId);
+        // ADDED: Saga Compensation Logic
+        try {
+            Order savedOrder = orderRepository.save(order);
+            log.info("Order {} created successfully for user {}", savedOrder.getId(), userId);
+            // Optionally publish an "order-confirmed" event here
+            return savedOrder;
+        } catch (Exception e) {
+            log.error("CRITICAL: Failed to save order {} after reserving stock. Triggering compensation.", order.getId(), e);
+            // COMPENSATING ACTION: Revert the stock reservation by publishing a cancellation event.
+            kafkaTemplate.send(orderCancellationTopic, itemsToReserve);
+            throw new RuntimeException("Could not create order. Stock reservation has been reverted.");
         }
-    }
-
-    @Transactional
-    public void updateOrder(OrderUpdate orderUpdate) {
-        Order order = orderRepository.findById(orderUpdate.getOrderId())
-                .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderUpdate.getOrderId()));
-
-        if (!order.getCustomerId().equals(orderUpdate.getCustomerId())) {
-            throw new RuntimeException("Unauthorized action: User does not own this order.");
-        }
-
-        if (orderUpdate.getDeliveryAgentId() != null) {
-            order.setDeliveryAgentId(orderUpdate.getDeliveryAgentId());
-        }
-        if (orderUpdate.getPaymentStatus() != null) {
-            order.setPaymentStatus(orderUpdate.getPaymentStatus());
-        }
-        if (orderUpdate.getCurrentStatus() != null) {
-            order.setCurrentStatus(orderUpdate.getCurrentStatus());
-        }
-
-        order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.save(order);
     }
 
     @Transactional
@@ -133,27 +83,39 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
         if (!order.getCustomerId().equals(userId)) {
-            throw new RuntimeException("Unauthorized action.");
+            throw new SecurityException("Unauthorized: You do not own this order.");
         }
         if (order.getCurrentStatus() != OrderStatus.ORDER_CONFIRMED) {
-            throw new RuntimeException("Order cannot be cancelled in its current state.");
+            throw new IllegalStateException("Order cannot be cancelled in its current state.");
         }
 
         order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
 
+        // Map order items to the request DTO for the product service
         List<ProductOrderRequest> itemsToRevert = order.getItemsOrdered().stream()
                 .map(item -> new ProductOrderRequest(item.getId(), item.getQuantity()))
                 .collect(Collectors.toList());
 
-        // Use Kafka to asynchronously notify ProductService to revert stock
-        kafkaTemplate.send("order-cancellation-events", itemsToRevert);
+        // FIXED: Use the correct, standardized Kafka topic name
+        kafkaTemplate.send(orderCancellationTopic, itemsToRevert);
+        log.info("Published cancellation event for order {}", orderId);
+    }
+
+    // Other methods...
+    public List<Order> getOrdersByUserId(UUID userId) {
+        return orderRepository.findAllByCustomerId(userId)
+                .orElseThrow(() -> new RuntimeException("No orders found for user ID: " + userId));
+    }
+
+    public Order getOrderByIdAndUserId(UUID orderId, UUID userId) {
+        return orderRepository.findAllByCustomerIdAndId(orderId, userId)
+                .orElseThrow(() -> new RuntimeException("Order not found or you do not have permission to view it."));
     }
 
     public List<Order> getOrdersByMerchantId(UUID merchantId) {
-        Optional<List<Order>> allByCustomerId = orderRepository.findAllByMerchantId(merchantId);
-
-        return allByCustomerId.orElseThrow(() -> new RuntimeException("No orders found for merchant ID: " + merchantId));
+        return orderRepository.findAllByMerchantId(merchantId)
+                .orElseThrow(() -> new RuntimeException("No orders found for merchant ID: " + merchantId));
     }
 }

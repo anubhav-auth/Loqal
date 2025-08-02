@@ -8,5 +8,5 @@ import java.util.*;
 public interface OrderRepository extends JpaRepository<Order, UUID> {
     Optional<List<Order>> findAllByCustomerId(UUID customerId);
     Optional<List<Order>> findAllByMerchantId(UUID customerId);
-    Optional<List<Order>> findAllByCustomerIdAndId(UUID customerId, UUID orderId);
+    Optional<Order> findAllByCustomerIdAndId(UUID customerId, UUID orderId);
 }
