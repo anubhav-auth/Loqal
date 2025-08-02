@@ -1,4 +1,4 @@
-package com.Loqal.orderservice.config;
+package com.Loqal.orderservice.config; // Assuming this config is in a shared module or the OrderService
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -10,39 +10,40 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
-    @Value("${services.user-service.url}")
-    private String userServiceUrl;
 
-    @Value("${services.merchant-service.url}")
-    private String merchantServiceUrl;
-
-    @Value("${services.product-service.url}")
-    private String productServiceUrl;
-
+    // You can define a separate WebClient bean for each service for clarity
     @Bean
-    public WebClient webClient(CircuitBreakerRegistry circuitBreakerRegistry) {
-        CircuitBreaker userServiceCircuitBreaker = circuitBreakerRegistry.circuitBreaker("userService");
-        CircuitBreaker merchantServiceCircuitBreaker = circuitBreakerRegistry.circuitBreaker("merchantService");
-        CircuitBreaker productServiceCircuitBreaker = circuitBreakerRegistry.circuitBreaker("productService");
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
 
-        return WebClient.builder()
-                .baseUrl(userServiceUrl) // Default base URL; override per service
-                .filter((request, next) -> {
-                    String host = request.url().getHost();
+    // A dedicated WebClient bean for Product Service
+    @Bean
+    public WebClient productServiceWebClient(WebClient.Builder webClientBuilder,
+                                             CircuitBreakerRegistry circuitBreakerRegistry,
+                                             @Value("${services.product-service.url}") String productServiceUrl) {
 
-                    CircuitBreaker circuitBreaker;
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("productService");
 
-                    if (host.contains("merchant")) {
-                        circuitBreaker = merchantServiceCircuitBreaker;
-                    } else if (host.contains("product")) {
-                        circuitBreaker = productServiceCircuitBreaker;
-                    } else {
-                        circuitBreaker = userServiceCircuitBreaker; // default fallback
-                    }
+        return webClientBuilder
+                .baseUrl(productServiceUrl)
+                .filter((request, next) -> next.exchange(request)
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
+                .build();
+    }
 
-                    return next.exchange(request)
-                            .transformDeferred(CircuitBreakerOperator.of(circuitBreaker));
-                })
+    // A dedicated WebClient bean for User Service
+    @Bean
+    public WebClient userServiceWebClient(WebClient.Builder webClientBuilder,
+                                          CircuitBreakerRegistry circuitBreakerRegistry,
+                                          @Value("${services.user-service.url}") String userServiceUrl) {
+
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("userService");
+
+        return webClientBuilder
+                .baseUrl(userServiceUrl)
+                .filter((request, next) -> next.exchange(request)
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
                 .build();
     }
 }
