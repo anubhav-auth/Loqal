@@ -1,5 +1,6 @@
 package com.Loqal.productservice.services;
 
+import com.Loqal.productservice.dto.events.OrderCancellationEvent;
 import com.Loqal.productservice.dto.events.OrderCreationRequest;
 import com.Loqal.productservice.dto.events.StockReservationResponse;
 import com.Loqal.productservice.entity.ProcessedEvent;
@@ -11,6 +12,7 @@ import com.Loqal.productservice.repository.ProcessedEventRepository;
 import com.Loqal.productservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -19,10 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -43,16 +42,24 @@ public class ProductService {
     @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = "product-service-group")
     public void consumeOrderCreationRequest(OrderCreationRequest request) {
 
-        log.info("Received stock reservation request for order {}", request.getOrderId());
+        Optional<ProcessedEvent> existingEvent = processedEventRepository.findById(request.getOrderId());
+        if (existingEvent.isPresent()) {
+            log.warn("Duplicate request for order {}. Resending original result.", request.getOrderId());
+            StockReservationResponse originalResponse = new StockReservationResponse();
+            originalResponse.setOrderId(existingEvent.get().getOrderId());
+            originalResponse.setStatus(existingEvent.get().getStatus());
+            originalResponse.setReason(existingEvent.get().getReason());
+            kafkaTemplate.send(stockReservationResultTopic, originalResponse);
+            return;
+        }
+
+        // 2. Process the request and store the result
+        ProcessedEvent eventToStore = new ProcessedEvent();
+        eventToStore.setOrderId(request.getOrderId());
         StockReservationResponse response = new StockReservationResponse();
         response.setOrderId(request.getOrderId());
 
         try {
-            if (processedEventRepository.existsById(request.getOrderId())) {
-                log.warn("Duplicate request for order {}, ignoring.", request.getOrderId());
-                return;
-            }
-            processedEventRepository.save(new ProcessedEvent(request.getOrderId()));
             List<ProductOrderRequest> sortedItems = request.getItems().stream()
                     .sorted(Comparator.comparing(ProductOrderRequest::getProductId))
                     .toList();
@@ -71,18 +78,20 @@ public class ProductService {
 
             response.setStatus("SUCCESS");
             log.info("Stock successfully reserved for order {}", request.getOrderId());
-
-
+            eventToStore.setStatus("SUCCESS");
+            processedEventRepository.save(eventToStore);
         } catch (Exception e) {
             // IMPORTANT: The transaction will roll back, undoing any partial stock changes.
             log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
             response.setStatus("FAILED");
             response.setReason(e.getMessage());
-            response.setReason(e.getMessage());
+            eventToStore.setStatus("FAILED");
+            eventToStore.setReason(e.getMessage());
             // re-throw the exception to ensure the transaction rolls back.
             // The afterCompletion hook will still run.
             throw e;
         } finally {
+
             // Use afterCompletion to guarantee a response is sent.
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -99,12 +108,25 @@ public class ProductService {
         }
     }
 
+    @KafkaListener(topics = "${spring.kafka.topic.order-cancel-dlt}", groupId = "product-service-dlt-group")
+    public void consumeOrderCancellationDLT(ConsumerRecord<String, Object> record) {
+        log.error("🚨 DEAD LETTER QUEUE 🚨 | Received a failed message from topic: {}", record.topic());
+        log.error("Payload: {}", record.value());
+        // Add alerting logic here (e.g., send email, push to monitoring system).
+    }
+
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = "product-service-group")
-    public void consumeOrderCancellation(List<ProductOrderRequest> itemsToRevert) {
+    public void consumeOrderCancellation(OrderCancellationEvent request) {
+        Optional<ProcessedEvent> existingEvent = processedEventRepository.findById(request.getOrderId());
+        if (existingEvent.isPresent() && "CANCELLED".equals(existingEvent.get().getStatus())) {
+            log.warn("Duplicate cancellation request for order {}. Ignoring.", request.getOrderId());
+            return;
+        }
+
         log.info("Received event to revert stock for a cancelled order.");
         try {
-            for (ProductOrderRequest item : itemsToRevert) {
+            for (ProductOrderRequest item : request.getItems()) {
                 Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
                         .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId()));
 
@@ -112,6 +134,12 @@ public class ProductService {
                 productRepository.save(product);
                 log.info("Reverted {} units of stock for product {}. New stock: {}", item.getQuantity(), product.getName(), product.getQuantity());
             }
+
+            ProcessedEvent eventToStore = existingEvent.orElse(new ProcessedEvent());
+            eventToStore.setOrderId(request.getOrderId());
+            eventToStore.setStatus("CANCELLED"); // Use a clear status for cancellation
+            eventToStore.setReason(null); // Clear any previous failure reason
+            processedEventRepository.save(eventToStore);
         } catch (Exception e) {
             log.error("Failed to process order cancellation event. Error: {}. This may require manual intervention.", e.getMessage());
             // Re-throwing will trigger Kafka retries. Configure a Dead Letter Queue (DLQ) for production.
