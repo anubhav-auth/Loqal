@@ -1,6 +1,7 @@
 package com.Loqal.orderservice.services;
 
 import com.Loqal.orderservice.dto.ProductOrderRequest;
+import com.Loqal.orderservice.dto.events.OrderCancellationEvent;
 import com.Loqal.orderservice.dto.events.StockReservationRequest;
 import com.Loqal.orderservice.entity.Order;
 import com.Loqal.orderservice.entity.OutboxEvent;
@@ -32,7 +33,7 @@ public class OutboxService {
     @Transactional // Will participate in the calling method's transaction
     public void requestStockReservation(Order order) {
         List<ProductOrderRequest> items = order.getItems().stream()
-                .map(item -> new ProductOrderRequest(item.getProductId(), item.getQuantity()))
+                .map(item -> new ProductOrderRequest(item.getProductId(), item.getPriceAtPurchase(), item.getQuantity()))
                 .collect(Collectors.toList());
 
         StockReservationRequest payload = new StockReservationRequest(order.getId(), items);
@@ -47,12 +48,12 @@ public class OutboxService {
 
     @SneakyThrows
     @Transactional
-    public void requestStockReversion(List<ProductOrderRequest> itemsToRevert) {
+    public void requestStockReversion(OrderCancellationEvent cancellationEvent) {
         OutboxEvent event = new OutboxEvent();
         event.setAggregateType("Order");
         event.setEventType("STOCK_REVERSION_REQUESTED");
         event.setDestinationTopic(stockReversionRequestTopic);
-        event.setPayload(objectMapper.writeValueAsString(itemsToRevert));
+        event.setPayload(objectMapper.writeValueAsString(cancellationEvent));
         outboxEventRepository.save(event);
     }
 }

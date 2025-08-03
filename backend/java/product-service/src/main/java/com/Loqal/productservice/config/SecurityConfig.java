@@ -23,6 +23,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Anyone with a valid token can view products
                         .requestMatchers(HttpMethod.GET, "/product/**").authenticated()
+                        // Only allow services with 'internal-service' authority to access this endpoint.
+                        .requestMatchers("/api/products/internal/**").hasAuthority("SCOPE_internal-service")
                         // Only MERCHANTS can create or update products
                         .requestMatchers(HttpMethod.POST, "/product").hasAuthority("SCOPE_MERCHANT")
                         .requestMatchers(HttpMethod.PUT, "/product/**").hasAuthority("SCOPE_MERCHANT")

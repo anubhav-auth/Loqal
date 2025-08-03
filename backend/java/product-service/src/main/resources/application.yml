@@ -5,6 +5,7 @@ spring:
     topic:
       order-events: order-events
       order-status-updates: order-status-updates
+      order-cancel-dlt: com.loqal.orders.cancelled.dlt
   datasource:
     url: ${DB_URL}
     username: ${POSTGRES_USER}
