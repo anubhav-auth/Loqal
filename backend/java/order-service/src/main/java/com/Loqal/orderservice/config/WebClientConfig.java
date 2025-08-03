@@ -1,4 +1,4 @@
-package com.Loqal.orderservice.config; // Assuming this config is in a shared module or the OrderService
+package com.Loqal.orderservice.config;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -7,14 +7,38 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import reactor.util.retry.Retry;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class WebClientConfig {
 
-    // You can define a separate WebClient bean for each service for clarity
     @Bean
     public WebClient.Builder webClientBuilder() {
-        return WebClient.builder();
+        // Configure HTTP client with timeouts
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(10, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(10, TimeUnit.SECONDS)));
+
+        // Configure memory limits
+        ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
+                .build();
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .exchangeStrategies(strategies);
     }
 
     // A dedicated WebClient bean for Product Service
@@ -28,11 +52,19 @@ public class WebClientConfig {
         return webClientBuilder
                 .baseUrl(productServiceUrl)
                 .filter((request, next) -> next.exchange(request)
-                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
+                        .timeout(Duration.ofSeconds(8)) // Response timeout
+                        .retryWhen(Retry.backoff(2, Duration.ofMillis(500))
+                                .filter(throwable -> !(throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException)))
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                        .onErrorResume(throwable -> {
+                            if (throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException) {
+                                return Mono.error(new RuntimeException("Product service is currently unavailable"));
+                            }
+                            return Mono.error(throwable);
+                        }))
                 .build();
     }
 
-    // A dedicated WebClient bean for User Service
     @Bean
     public WebClient userServiceWebClient(WebClient.Builder webClientBuilder,
                                           CircuitBreakerRegistry circuitBreakerRegistry,
@@ -43,7 +75,16 @@ public class WebClientConfig {
         return webClientBuilder
                 .baseUrl(userServiceUrl)
                 .filter((request, next) -> next.exchange(request)
-                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
+                        .timeout(Duration.ofSeconds(8))
+                        .retryWhen(Retry.backoff(2, Duration.ofMillis(500))
+                                .filter(throwable -> !(throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException)))
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                        .onErrorResume(throwable -> {
+                            if (throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException) {
+                                return Mono.error(new RuntimeException("User service is currently unavailable"));
+                            }
+                            return Mono.error(throwable);
+                        }))
                 .build();
     }
 }
