@@ -3,6 +3,7 @@ package com.Loqal.orderservice.services;
 import com.Loqal.orderservice.dto.OrderRequest;
 import com.Loqal.orderservice.dto.OrderStatus;
 import com.Loqal.orderservice.dto.ProductOrderRequest;
+import com.Loqal.orderservice.dto.events.OrderCancellationEvent;
 import com.Loqal.orderservice.dto.events.StockReservationResponse;
 import com.Loqal.orderservice.entity.Order;
 import com.Loqal.orderservice.entity.OrderItem;
@@ -38,6 +39,15 @@ public class OrderService {
 
     @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
     private String orderCancellationTopic;
+
+
+    private void triggerStockReversion(Order order) {
+        List<ProductOrderRequest> itemsToRevert = order.getItems().stream()
+                .map(item -> new ProductOrderRequest(item.getProductId(), item.getPriceAtPurchase(), item.getQuantity()))
+                .collect(Collectors.toList());
+        OrderCancellationEvent event = new OrderCancellationEvent(order.getId(), itemsToRevert);
+        outboxService.requestStockReversion(event);
+    }
 
     public Mono<Order> createOrder(OrderRequest req, UUID userId) {
         Order order = new Order();
@@ -111,16 +121,25 @@ public class OrderService {
         Order order = orderRepository.findById(response.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Received stock result for non-existent order: " + response.getOrderId()));
 
-        if (order.getCurrentStatus() != OrderStatus.ORDER_PENDING) {
-            log.warn("Received stock result for order {} which is no longer in PENDING state. Current state: {}. Ignoring.", order.getId(), order.getCurrentStatus());
-            return;
-        }
-
-        if ("SUCCESS".equals(response.getStatus())) {
-            order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
+        if (order.getCurrentStatus() == OrderStatus.ORDER_CANCELLED_PENDING) {
+            log.warn("Stock result received for order {} that was already marked for cancellation.", order.getId());
+            if ("SUCCESS".equals(response.getStatus())) {
+                // The stock WAS reserved, so we must now revert it.
+                triggerStockReversion(order);
+                log.info("Triggering stock reversion for a successfully reserved but cancelled order.");
+            }
+            // Whether success or fail, the final status is CANCELLED.
+            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
+        } else if (order.getCurrentStatus() == OrderStatus.ORDER_PENDING) {
+            // Original logic for a normal flow
+            if ("SUCCESS".equals(response.getStatus())) {
+                order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
+            } else {
+                order.setCurrentStatus(OrderStatus.ORDER_REJECTED);
+            }
         } else {
-            order.setCurrentStatus(OrderStatus.ORDER_REJECTED);
-            // You could store the failure reason from response.getReason() in the order entity.
+            log.warn("Received stock result for order {} in an unexpected state: {}. Ignoring.", order.getId(), order.getCurrentStatus());
+            return;
         }
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
@@ -134,21 +153,19 @@ public class OrderService {
         if (!order.getCustomerId().equals(userId)) {
             throw new SecurityException("Unauthorized: You do not own this order.");
         }
-        if (order.getCurrentStatus() != OrderStatus.ORDER_CONFIRMED && order.getCurrentStatus() != OrderStatus.ORDER_PENDING) {
-            throw new IllegalStateException("Order cannot be cancelled in its current state.");
-        }
 
-
-        if (order.getCurrentStatus() == OrderStatus.ORDER_CONFIRMED) {
-            outboxService.requestStockReversion(order.getItems().stream()
-                    .map(item -> new ProductOrderRequest(item.getProductId(), item.getPriceAtPurchase(), item.getQuantity()))
-                    .collect(Collectors.toList()));
-
+        if (order.getCurrentStatus() == OrderStatus.ORDER_PENDING) {
+            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED_PENDING); // A new state
+            orderRepository.save(order);
+            log.info("Order {} marked for cancellation. Waiting for stock reservation result.", orderId);
+        } else if (order.getCurrentStatus() == OrderStatus.ORDER_CONFIRMED) {
+            triggerStockReversion(order);
+            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
+            orderRepository.save(order);
             log.info("Scheduled stock reversion for cancelled order {}", orderId);
+        } else {
+            throw new IllegalStateException("Order cannot be cancelled in its current state: " + order.getCurrentStatus());
         }
-        order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
-        order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.save(order);
     }
 
     // Other methods...
