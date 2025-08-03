@@ -39,7 +39,6 @@ public class WebClientConfig {
                 .exchangeStrategies(strategies);
     }
 
-    // A dedicated WebClient bean for Product Service
     @Bean
     public WebClient productServiceWebClient(WebClient.Builder webClientBuilder,
                                              CircuitBreakerRegistry circuitBreakerRegistry,
