@@ -10,8 +10,8 @@ services:
           - ~/auth
           - /.well-known/jwks.json
         strip_path: false
-   # A virtual service for EXTERNAL traffic to the user-service
-  - name: user-service-public
+
+  - name: user-service
     url: http://user-service:8082
     routes:
       - name: user-public-routes
@@ -19,53 +19,42 @@ services:
           - ~/users
         strip_path: false
     plugins:
-      - name: jwt # PROTECTED by the JWT plugin
+      - name: jwt
         config:
-          key_claim_name: kid # <--- ADD THIS LINE
+          key_claim_name: kid
 
-  # A virtual service for INTERNAL traffic to the user-service
-  - name: user-service-internal
-    url: http://user-service:8082
-    routes:
-      - name: user-internal-routes
-        paths:
-          - ~/internal
-        strip_path: false
-
-  - name: product-service-public
+  - name: product-service
     url: http://product-service:8083
     routes:
       - name: product-public-routes
         paths:
-          - ~/product # Matches /product/{id} etc.
+          - /products 
         strip_path: false
-    plugins:
-      - name: jwt # PROTECTED by the JWT plugin
-        config:
-          key_claim_name: kid
-          
-  - name: product-service-internal
-    url: http://product-service:8083
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: kid
+
+  - name: order-service
+    url: http://order-service:8084
     routes:
-      - name: product-internal-routes
+      - name: order-public-routes
         paths:
-          - ~/internal/ # Matches all internal product routes
+          - /api/orders
         strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: kid
 
-# 2. Define Consumers (who is using the API)
 consumers:
-  - username: auth-service # This replaces 'curl -X POST /consumers'
+  - username: auth-service
 
-# 3. Define Credentials for Consumers
-# This section links credentials (like JWT keys) to consumers.
+
 jwt_secrets:
-  - consumer: auth-service # Link to the consumer created above
-    # Replace {YOUR_KID} with the actual 'kid' from your JWKS endpoint.
-    # To get it, run: curl http://localhost:8000/.well-known/jwks.json
+  - consumer: auth-service 
     key: "1346311f-6f90-4c3f-90f2-ece3b72e44c5" 
     algorithm: RS256
-    # You must provide the FULL JWKS JSON object as a string here.
-    # Example: '{"keys":[{"kty":"RSA","e":"AQAB",...}]}'
     rsa_public_key: | 
       -----BEGIN PUBLIC KEY-----
       MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAti6ZgM77Oh70Wcn0QtuI
