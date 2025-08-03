@@ -1,34 +1,46 @@
 server:
-  port: 8082 # Or any other port you prefer
+  port: ${ORDER_SERVER_PORT}
 
 spring:
   application:
     name: order-service
-    # Redis Configuration
-  data:
-    redis:
-        host: localhost
-        port: 6379
+
+  # == DATABASE ==
   datasource:
-    url: jdbc:postgresql://localhost:5432/order_db
-    username: your_db_user
-    password: your_db_password
+    url: ${DB_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO_SETTING}
     show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  kafka:
-    bootstrap-servers: localhost:9092
-    topic:
-      order-events: "order-events"
-      order-status-updates: "order-status-updates"
 
-# Logging
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    topic:
+      order-creation-requested: ${ORDER_CREATTION_REQUESTED}
+      stock-reservation-result: ${STOCK_RESERVATION_RESULT}
+      order-cancel: ${ORDER_CANCEL}
+
+jwt:
+  jwks-uri: ${JWT_JWKS_URI}
+
+services:
+  product-service:
+    url: ${INTERNAL_SERVICE_URL}
+  user-service:
+    url: ${INTERNAL_SERVICE_URL}
+
 logging:
   level:
     root: INFO
