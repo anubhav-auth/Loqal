@@ -14,5 +14,7 @@ import java.util.UUID;
 @Entity
 public class ProcessedEvent {
     @Id
-    private UUID requestId;
+    private UUID orderId;
+    private String status;
+    private String reason;
 }
