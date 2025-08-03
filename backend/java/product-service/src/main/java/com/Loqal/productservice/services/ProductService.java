@@ -122,7 +122,6 @@ public class ProductService {
     public void consumeOrderCancellationDLT(ConsumerRecord<String, Object> record) {
         log.error("🚨 DEAD LETTER QUEUE 🚨 | Received a failed message from topic: {}", record.topic());
         log.error("Payload: {}", record.value());
-        // Add alerting logic here (e.g., send email, push to monitoring system).
     }
 
     @Transactional
@@ -160,10 +159,7 @@ public class ProductService {
         }
     }
 
-    // --- Standard CRUD and Search ---
-
     public Product create(ProductDTO product, UUID merchantId) {
-        // ... (your existing validation logic is good)
         Product newProduct = new Product();
         newProduct.setName(product.name());
         newProduct.setPrice(product.price());
@@ -173,7 +169,6 @@ public class ProductService {
     }
 
     public List<Product> getAllByMerchant(UUID tenantId) {
-        // REFACTORED: Return an empty list instead of throwing an exception.
         return productRepository.findAllByMerchantId(tenantId);
     }
 
@@ -183,8 +178,7 @@ public class ProductService {
     }
 
     public Product update(UUID id, ProductDTO product, UUID merchantId) {
-        // ... (your existing update logic with ownership check is good)
-        Product existingProduct = getById(id); // Re-use getById for DRY principle
+        Product existingProduct = getById(id);
 
         if (!existingProduct.getMerchantId().equals(merchantId)) {
             throw new UnauthorizedProductAccessException();

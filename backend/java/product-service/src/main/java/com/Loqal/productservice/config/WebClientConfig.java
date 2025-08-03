@@ -24,14 +24,12 @@ public class WebClientConfig {
 
     @Bean
     public WebClient.Builder webClientBuilder() {
-        // Configure HTTP client with timeouts
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
                 .doOnConnected(conn ->
                         conn.addHandlerLast(new ReadTimeoutHandler(10, TimeUnit.SECONDS))
                                 .addHandlerLast(new WriteTimeoutHandler(10, TimeUnit.SECONDS)));
 
-        // Configure memory limits
         ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
@@ -41,7 +39,6 @@ public class WebClientConfig {
                 .exchangeStrategies(strategies);
     }
 
-    // A dedicated WebClient bean for Product Service
     @Bean
     public WebClient productServiceWebClient(WebClient.Builder webClientBuilder,
                                              CircuitBreakerRegistry circuitBreakerRegistry,

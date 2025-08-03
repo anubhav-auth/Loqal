@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-//    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final WebClient productServiceWebClient;
     private final OutboxService outboxService;
 
@@ -66,16 +65,13 @@ public class OrderService {
                                 .uri("http://product-service/api/products/{id}", itemReq.getProductId())
                                 .retrieve()
                                 .bodyToMono(Product.class)
-                                .timeout(Duration.ofSeconds(5))  // Add this
-                                .retry(2)  // Add this for resilience
+                                .timeout(Duration.ofSeconds(5))
+                                .retry(2)
                                 .map(product -> Tuples.of(product, itemReq.getQuantity()))
                                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + itemReq.getProductId())))
                 )
-                // 4. Collect the results of all the async calls into a single List of Tuples.
                 .collectList()
-                // 5. Once all product details are fetched, proceed to build and save the order.
                 .flatMap(productTuples -> {
-                    // Create OrderItem objects using the trusted price from the product-service.
                     List<OrderItem> orderItems = productTuples.stream()
                             .map(tuple -> {
                                 Product product = tuple.getT1();
@@ -92,7 +88,6 @@ public class OrderService {
 
                     order.setItems(orderItems);
 
-                    // Calculate the total price based on the trusted data.
                     double totalPrice = orderItems.stream()
                             .mapToDouble(item -> item.getPriceAtPurchase() * item.getQuantity())
                             .sum();
@@ -109,7 +104,6 @@ public class OrderService {
                             });
                 });
     }
-    // NEW: Kafka Listener to handle the result from ProductService
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.stock-reservation-result}", groupId = "order-service-group")
     public void consumeStockReservationResult(StockReservationResponse response) {
@@ -121,14 +115,11 @@ public class OrderService {
         if (order.getCurrentStatus() == OrderStatus.ORDER_CANCELLED_PENDING) {
             log.warn("Stock result received for order {} that was already marked for cancellation.", order.getId());
             if ("SUCCESS".equals(response.getStatus())) {
-                // The stock WAS reserved, so we must now revert it.
                 triggerStockReversion(order);
                 log.info("Triggering stock reversion for a successfully reserved but cancelled order.");
             }
-            // Whether success or fail, the final status is CANCELLED.
             order.setCurrentStatus(OrderStatus.ORDER_CANCELLED);
         } else if (order.getCurrentStatus() == OrderStatus.ORDER_PENDING) {
-            // Original logic for a normal flow
             if ("SUCCESS".equals(response.getStatus())) {
                 order.setCurrentStatus(OrderStatus.ORDER_CONFIRMED);
             } else {
@@ -152,7 +143,7 @@ public class OrderService {
         }
 
         if (order.getCurrentStatus() == OrderStatus.ORDER_PENDING) {
-            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED_PENDING); // A new state
+            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED_PENDING); 
             orderRepository.save(order);
             log.info("Order {} marked for cancellation. Waiting for stock reservation result.", orderId);
         } else if (order.getCurrentStatus() == OrderStatus.ORDER_CONFIRMED) {
