@@ -3,9 +3,11 @@ spring:
     name: product-service
   kafka:
     topic:
-      order-events: order-events
-      order-status-updates: order-status-updates
-      order-cancel-dlt: com.loqal.orders.cancelled.dlt
+      order-cancel: ${ORDER_CANCEL}
+      stock-reservation-result: ${STOCK_RESERVATION_RESULT}
+      order-cancel-dlt: ${ORDER_CANCEL_DLT}
+      order-creation-requested: ${ORDER_CREATTION_REQUESTED}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
   datasource:
     url: ${DB_URL}
     username: ${POSTGRES_USER}
@@ -23,3 +25,9 @@ server:
   
 jwt:
   jwks-uri: ${JWT_JWKS_URI}
+
+services:
+  product-service:
+    url: ${PRODUCT_SERVICE_URL}
+  user-service:
+    url: ${USER_SERVICE_URL}
