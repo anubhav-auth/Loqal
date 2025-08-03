@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuples;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -65,7 +66,8 @@ public class OrderService {
                                 .uri("http://product-service/api/products/{id}", itemReq.getProductId())
                                 .retrieve()
                                 .bodyToMono(Product.class)
-                                // 3. Combine the fetched product details with the requested quantity into a Tuple.
+                                .timeout(Duration.ofSeconds(5))  // Add this
+                                .retry(2)  // Add this for resilience
                                 .map(product -> Tuples.of(product, itemReq.getQuantity()))
                                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + itemReq.getProductId())))
                 )
@@ -96,20 +98,15 @@ public class OrderService {
                             .sum();
                     order.setFinalAmount(totalPrice);
 
-                    // 6. IMPORTANT: The database and outbox calls are blocking (JPA).
-                    //    We wrap them in Mono.fromCallable and run them on a dedicated scheduler
-                    //    to avoid blocking the main application threads.
-                    return Mono.fromCallable(() -> {
-                        Order savedOrder = orderRepository.save(order);
-                        // This can throw a checked exception, so it's good to handle it here.
-                        try {
-                            outboxService.requestStockReservation(savedOrder);
-                        } catch (Exception e) {
-                            // In a real app, you'd have a more robust error handling/compensation strategy.
-                            throw new RuntimeException("Failed to create outbox event", e);
-                        }
-                        return savedOrder;
-                    }).subscribeOn(Schedulers.boundedElastic());
+                    return Mono.fromCallable(() -> orderRepository.save(order))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .doOnSuccess(savedOrder -> {
+                                try {
+                                    outboxService.requestStockReservation(savedOrder);
+                                } catch (Exception e) {
+                                    log.error("Failed to create outbox event for order {}", savedOrder.getId(), e);
+                                }
+                            });
                 });
     }
     // NEW: Kafka Listener to handle the result from ProductService
@@ -118,7 +115,7 @@ public class OrderService {
     public void consumeStockReservationResult(StockReservationResponse response) {
         log.info("Received stock reservation result for order {}: {}", response.getOrderId(), response.getStatus());
 
-        Order order = orderRepository.findById(response.getOrderId())
+        Order order = orderRepository.findByIdForUpdate(response.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Received stock result for non-existent order: " + response.getOrderId()));
 
         if (order.getCurrentStatus() == OrderStatus.ORDER_CANCELLED_PENDING) {
@@ -147,7 +144,7 @@ public class OrderService {
 
     @Transactional
     public void cancelOrder(UUID orderId, UUID userId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
         if (!order.getCustomerId().equals(userId)) {
