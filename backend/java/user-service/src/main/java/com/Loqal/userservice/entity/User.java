@@ -1,17 +1,19 @@
 package com.Loqal.userservice.entity;
 
 import com.Loqal.userservice.entity.dto.UserRoles;
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Entity
-@Table(name = "users")
+@Table("users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,35 +21,36 @@ import java.util.UUID;
 public class User {
 
     @Id
-    @GeneratedValue
-    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(unique = true, nullable = false)
+    @Column("email")
     private String email;
 
-    @Column(nullable = false)
+    @Column("full_name")
     private String fullName;
 
+    @Column("phone_number")
     private String phoneNumber;
 
+    @Column("profile_picture_url")
     private String profilePictureUrl;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
+
+    @Column("roles")
     private List<UserRoles> roles;
 
-    @Embedded
-    private Address address;
+    private String street;
+    private String city;
+    private String state;
+    private String postalCode;
+    private String country;
 
-    @Column(nullable = false)
+    @Column("tenant_id")
     private UUID tenantId;
 
-    @CreationTimestamp
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @Column("updated_at")
     private LocalDateTime updatedAt;
 }
