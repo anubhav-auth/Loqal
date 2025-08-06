@@ -1,27 +1,29 @@
 package com.loqal.authservice.service;
 
 import com.loqal.authservice.repository.UserCredentialRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
 @Component
-public class UserDetailServiceImpl implements UserDetailsService {
-    @Autowired
-    private UserCredentialRepository userCredentialRepository;
+@RequiredArgsConstructor
+public class UserDetailServiceImpl implements ReactiveUserDetailsService {
+
+    private final UserCredentialRepository userCredentialRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public Mono<UserDetails> findByUsername(String email) {
         return userCredentialRepository.findByEmail(email)
-                .map(user -> org.springframework.security.core.userdetails.User.builder()
+                .switchIfEmpty(Mono.error(new UsernameNotFoundException("User not found: " + email)))
+                .map(user -> User.builder()
                         .username(user.getEmail())
                         .password(user.getPasswordHash())
-                        .authorities("USER")
+                        .authorities("USER") // Or fetch roles dynamically
                         .build()
-                ).orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+                );
     }
-
 }
-
