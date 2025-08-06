@@ -36,7 +36,7 @@ public class ProductService {
     private final ProcessedEventRepository processedEventRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
+    @Value("${spring.kafka.topic.order-cancel}")
     private String orderCancellationTopic;
 
     @Value("${spring.kafka.topic.stock-reservation-result}")

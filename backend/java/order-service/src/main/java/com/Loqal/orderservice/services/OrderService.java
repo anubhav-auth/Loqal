@@ -104,6 +104,7 @@ public class OrderService {
                             });
                 });
     }
+
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.stock-reservation-result}", groupId = "order-service-group")
     public void consumeStockReservationResult(StockReservationResponse response) {
@@ -143,7 +144,7 @@ public class OrderService {
         }
 
         if (order.getCurrentStatus() == OrderStatus.ORDER_PENDING) {
-            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED_PENDING); 
+            order.setCurrentStatus(OrderStatus.ORDER_CANCELLED_PENDING);
             orderRepository.save(order);
             log.info("Order {} marked for cancellation. Waiting for stock reservation result.", orderId);
         } else if (order.getCurrentStatus() == OrderStatus.ORDER_CONFIRMED) {
