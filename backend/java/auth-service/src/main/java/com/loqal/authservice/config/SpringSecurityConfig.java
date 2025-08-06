@@ -1,53 +1,34 @@
 package com.loqal.authservice.config;
 
-
 import com.loqal.authservice.service.UserDetailServiceImpl;
-import com.loqal.authservice.utils.JwtFilter;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
-@EnableWebSecurity
+@EnableWebFluxSecurity
+@RequiredArgsConstructor
 public class SpringSecurityConfig {
 
-    @Autowired
-    private UserDetailServiceImpl userDetailsService;
-
-    @Autowired
-    private JwtFilter jwtFilter;
+    private final UserDetailServiceImpl userDetailService;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/.well-known/**").permitAll()
-                        .anyRequest().permitAll()
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        // This configures which endpoints are public and which are protected for a reactive application.
+        return http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable) // Disable CSRF for stateless APIs
+                .authorizeExchange(exchange -> exchange
+                        .pathMatchers("/auth/**", "/.well-known/**").permitAll() // Public endpoints
+                        .anyExchange().authenticated() // All other endpoints require authentication
                 )
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
     }
 
     @Bean
@@ -56,8 +37,10 @@ public class SpringSecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    public ReactiveAuthenticationManager reactiveAuthenticationManager() {
+        // This is the missing bean that your service needs for authentication.
+        var authenticationManager = new UserDetailsRepositoryReactiveAuthenticationManager(userDetailService);
+        authenticationManager.setPasswordEncoder(passwordEncoder());
+        return authenticationManager;
     }
 }
-
