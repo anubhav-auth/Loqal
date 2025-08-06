@@ -1,16 +1,19 @@
 package com.Loqal.userservice.services;
 
+import com.Loqal.userservice.entity.Address;
 import com.Loqal.userservice.entity.User;
 import com.Loqal.userservice.entity.dto.*;
 import com.Loqal.userservice.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -18,57 +21,93 @@ public class UserService {
 
     private final UserRepository repo;
 
-    public UserInfoDto getUserInfoByEmail(String email) {
-        User user = (User) repo.findByEmail(email).orElseThrow(() ->
-                new RuntimeException("User not found for email: " + email));
-
-        return UserInfoDto.builder()
-                .userId(user.getId())
-                .roles(user.getRoles())
-                .tenantId(user.getTenantId())
-                .build();
-    }
-
-    public UserProfileDto getProfile(UUID id) {
-        User user = repo.findById(id).orElseThrow(() ->
-                new RuntimeException("User not found for ID: " + id));
-        return mapToProfile(user);
+    public Mono<UserProfileDto> getProfile(UUID id) {
+        return repo.findById(id)
+                .map(this::mapToProfile)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found for ID: " + id)));
     }
 
     @Transactional
-    public UserProfileDto register(UserRegisterDto dto) {
-        if (repo.findByEmail(dto.getEmail()).isPresent())
-            throw new RuntimeException("Email already exists");
-
-        User user = User.builder()
-                .fullName(dto.getFullName())
-                .email(dto.getEmail())
-                .phoneNumber(dto.getPhoneNumber())
-                .profilePictureUrl(dto.getProfilePictureUrl())
-                .tenantId(dto.getTenantId())
-                .address(dto.getAddress())
-                .roles(List.of(UserRoles.USER))
-                .build();
-
-        User saved = repo.save(user);
-        return mapToProfile(saved);
+    public Mono<UserProfileDto> register(UserRegisterDto dto) {
+        return repo.findByEmail(dto.getEmail())
+                .flatMap(existingUser -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists")))
+                .switchIfEmpty(Mono.defer(() -> {
+                    User user = User.builder()
+                            .fullName(dto.getFullName())
+                            .email(dto.getEmail())
+                            .phoneNumber(dto.getPhoneNumber())
+                            .profilePictureUrl(dto.getProfilePictureUrl())
+                            .tenantId(dto.getTenantId())
+                            .street(dto.getAddress().getStreet())
+                            .city(dto.getAddress().getCity())
+                            .state(dto.getAddress().getState())
+                            .postalCode(dto.getAddress().getPostalCode())
+                            .country(dto.getAddress().getCountry())
+                            .roles(List.of(UserRoles.USER))
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+                    return repo.save(user).map(this::mapToProfile);
+                }))
+                .cast(UserProfileDto.class);
     }
 
     @Transactional
-    public UserProfileDto updateProfile(UUID id, UserProfileDto dto) {
-        User user = repo.findById(id).orElseThrow(() ->
-                new RuntimeException("User not found"));
+    public Mono<UserProfileDto> updateProfile(UUID id, UserProfileDto dto) {
+        return repo.findById(id)
+                .flatMap(user -> {
+                    user.setFullName(dto.getFullName());
+                    user.setPhoneNumber(dto.getPhoneNumber());
+                    user.setProfilePictureUrl(dto.getProfilePictureUrl());
+                    user.setStreet(dto.getAddress().getStreet());
+                    user.setCity(dto.getAddress().getCity());
+                    user.setState(dto.getAddress().getState());
+                    user.setPostalCode(dto.getAddress().getPostalCode());
+                    user.setCountry(dto.getAddress().getCountry());
+                    user.setUpdatedAt(LocalDateTime.now());
+                    return repo.save(user);
+                })
+                .map(this::mapToProfile)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")));
+    }
 
-        user.setFullName(dto.getFullName());
-        user.setPhoneNumber(dto.getPhoneNumber());
-        user.setProfilePictureUrl(dto.getProfilePictureUrl());
-        user.setAddress(dto.getAddress());
-
-        User updated = repo.save(user);
-        return mapToProfile(updated);
+    @Transactional
+    public Mono<UserInfoDto> registerOrUpdateFromOAuth(UserOauthRegisterDto dto) {
+        return repo.findByEmail(dto.getEmail())
+                .switchIfEmpty(Mono.defer(() -> {
+                    User newUser = User.builder()
+                            .email(dto.getEmail())
+                            .fullName(dto.getFullName())
+                            .phoneNumber(dto.getPhoneNumber())
+                            .profilePictureUrl(dto.getProfilePictureUrl())
+                            .street(dto.getAddress().getStreet())
+                            .city(dto.getAddress().getCity())
+                            .state(dto.getAddress().getState())
+                            .postalCode(dto.getAddress().getPostalCode())
+                            .country(dto.getAddress().getCountry())
+                            .tenantId(dto.getTenantId())
+                            .roles(List.of(UserRoles.USER))
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+                    return repo.save(newUser);
+                }))
+                .map(user -> UserInfoDto.builder()
+                        .userId(user.getId())
+                        .roles(user.getRoles())
+                        .tenantId(user.getTenantId())
+                        .build());
     }
 
     private UserProfileDto mapToProfile(User user) {
+        Address address = Address.builder()
+                .street(user.getStreet())
+                .city(user.getCity())
+                .state(user.getState())
+                .postalCode(user.getPostalCode())
+                .country(user.getCountry())
+                .build();
+
         return UserProfileDto.builder()
                 .userId(user.getId())
                 .fullName(user.getFullName())
@@ -76,37 +115,7 @@ public class UserService {
                 .phoneNumber(user.getPhoneNumber())
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .tenantId(user.getTenantId())
-                .address(user.getAddress())
-                .build();
-    }
-
-    @Transactional
-    public UserInfoDto registerOrUpdateFromOAuth(UserOauthRegisterDto dto) {
-        Optional<Object> optionalUser = repo.findByEmail(dto.getEmail());
-
-        User user;
-        if (optionalUser.isPresent()) {
-            user = (User) optionalUser.get();
-        } else {
-            user = User.builder()
-                    .email(dto.getEmail())
-                    .fullName(dto.getFullName())
-                    .phoneNumber(dto.getPhoneNumber())
-                    .profilePictureUrl(dto.getProfilePictureUrl())
-                    .address(dto.getAddress())
-                    .tenantId(dto.getTenantId())
-                    .roles(List.of(UserRoles.USER))
-                    .build();
-            repo.save(user);
-        }
-
-
-
-        return UserInfoDto.builder()
-                .userId(user.getId())
-                .roles(user.getRoles())
-                .tenantId(user.getTenantId())
+                .address(address)
                 .build();
     }
 }
-
