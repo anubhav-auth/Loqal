@@ -4,24 +4,23 @@ import com.loqal.authservice.utils.RSAKeyProvider;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
     private final RSAKeyProvider keyProvider;
-
-    public JwtService(RSAKeyProvider keyProvider) {
-        this.keyProvider = keyProvider;
-    }
 
     public String generateAccessToken(String email, List<String> roles, UUID tenantId, UUID userId) throws JOSEException {
         return generateToken(email, roles, tenantId, userId, "access", 3600_000); // 1 hour
@@ -32,8 +31,6 @@ public class JwtService {
     }
 
     public String generateServiceToken() throws JOSEException {
-        JWSSigner signer = new RSASSASigner(keyProvider.getPrivateKey());
-
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject("auth-internal")
                 .issuer("auth-service")
@@ -41,20 +38,10 @@ public class JwtService {
                 .issueTime(new Date())
                 .expirationTime(new Date(System.currentTimeMillis() + 300_000)) // 5 min
                 .build();
-
-        SignedJWT signedJWT = new SignedJWT(
-                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(keyProvider.getRsaJWK().getKeyID()).build(),
-                claims
-        );
-
-        signedJWT.sign(signer);
-
-        return signedJWT.serialize();
+        return signToken(claims);
     }
 
     private String generateToken(String email, List<String> roles, UUID tenantId, UUID userId, String type, long ttlMillis) throws JOSEException {
-        JWSSigner signer = new RSASSASigner(keyProvider.getPrivateKey());
-
         JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .subject(email)
                 .issuer("auth-service")
@@ -63,20 +50,41 @@ public class JwtService {
                 .issueTime(new Date())
                 .expirationTime(new Date(System.currentTimeMillis() + ttlMillis));
 
-        if (tenantId != null) {
-            builder.claim("tenant_id", tenantId);
-        }
-        if (roles != null && !roles.isEmpty()) {
-            builder.claim("roles", roles);
-        }
+        if (tenantId != null) builder.claim("tenant_id", tenantId);
+        if (roles != null && !roles.isEmpty()) builder.claim("roles", roles);
 
+        return signToken(builder.build());
+    }
+
+    private String signToken(JWTClaimsSet claims) throws JOSEException {
         SignedJWT signedJWT = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(keyProvider.getRsaJWK().getKeyID()).build(),
-                builder.build()
+                claims
         );
-
-        signedJWT.sign(signer);
+        signedJWT.sign(new RSASSASigner(keyProvider.getPrivateKey()));
         return signedJWT.serialize();
     }
-}
 
+    public String extractUsername(String token) throws ParseException {
+        return extractAllClaims(token).getSubject();
+    }
+
+    public boolean isTokenExpired(String token) throws ParseException {
+        Date expiration = extractAllClaims(token).getExpirationTime();
+        return expiration != null && expiration.before(new Date());
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            RSASSAVerifier verifier = new RSASSAVerifier(keyProvider.getPublicKey());
+            return signedJWT.verify(verifier) && !isTokenExpired(token);
+        } catch (ParseException | JOSEException e) {
+            return false;
+        }
+    }
+
+    private JWTClaimsSet extractAllClaims(String token) throws ParseException {
+        return SignedJWT.parse(token).getJWTClaimsSet();
+    }
+}
