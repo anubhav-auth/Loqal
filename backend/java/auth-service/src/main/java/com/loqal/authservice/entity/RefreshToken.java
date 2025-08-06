@@ -1,26 +1,30 @@
 package com.loqal.authservice.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import java.util.UUID;
-import java.time.Instant;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "refresh_tokens")
+import java.time.Instant;
+import java.util.UUID;
+
+@Table("refresh_tokens")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class RefreshToken {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(nullable = false, length = 1024)
+    @Column("token")
     private String token;
 
-    @Column(nullable = false)
+    @Column("email")
     private String email;
 
-    @Column(nullable = false)
+    @Column("expiration")
     private Instant expiration;
 }

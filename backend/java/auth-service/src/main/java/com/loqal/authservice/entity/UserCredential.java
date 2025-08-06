@@ -1,12 +1,15 @@
 package com.loqal.authservice.entity;
 
-
-import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.util.UUID;
 
-@Entity
+
 @Table(name = "user_credentials")
 @Data
 @AllArgsConstructor
@@ -14,13 +17,12 @@ import java.util.UUID;
 public class UserCredential {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column("email")
     private String email;
 
-    @Column(nullable = false)
+    @Column("password_hash")
     private String passwordHash;
 }
 

@@ -7,11 +7,12 @@ import java.util.UUID;
 
 @Builder
 public record UserOauthRegisterDto(
-    String email,
-    String fullName,
-    String phoneNumber,
-    String profilePictureUrl,
-    UUID tenantId,
-    Address address
-){}
+        String email,
+        String fullName,
+        String phoneNumber,
+        String profilePictureUrl,
+        UUID tenantId,
+        Address address
+) {
+}
 
