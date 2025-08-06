@@ -37,9 +37,9 @@ jwt:
 
 services:
   product-service:
-    url: ${INTERNAL_SERVICE_URL}
+    url: ${PRODUCT_SERVICE_URL}
   user-service:
-    url: ${INTERNAL_SERVICE_URL}
+    url: ${USER_SERVICE_URL}
 
 logging:
   level:

@@ -2,6 +2,8 @@ package com.loqal.authservice.entity.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 public record RegisterRequest(
         @NotBlank(message = "Email is required")
@@ -16,4 +18,7 @@ public record RegisterRequest(
         @NotBlank(message = "Phone number is required")
         String phoneNumber
 ) {
+    public RegisterRequest {
+
+    }
 }
