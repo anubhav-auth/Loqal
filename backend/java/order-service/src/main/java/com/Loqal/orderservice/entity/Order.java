@@ -28,6 +28,8 @@ public class Order {
     private OrderStatus currentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private UUID razorpayOrderId;
+    private UUID razorpayPaymentId;
     @Version
     private Long version;
 }

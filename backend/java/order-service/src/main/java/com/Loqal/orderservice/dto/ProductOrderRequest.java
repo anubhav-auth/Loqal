@@ -9,6 +9,5 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ProductOrderRequest {
     private UUID productId;
-    private Double price;
     private int quantity;
 }

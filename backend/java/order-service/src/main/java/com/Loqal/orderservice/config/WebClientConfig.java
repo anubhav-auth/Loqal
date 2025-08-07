@@ -64,6 +64,29 @@ public class WebClientConfig {
     }
 
     @Bean
+    public WebClient paymentServiceWebClient(WebClient.Builder webClientBuilder,
+                                             CircuitBreakerRegistry circuitBreakerRegistry,
+                                             @Value("${services.payment-service.url}") String paymentServiceUrl) {
+
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("paymentService");
+
+        return webClientBuilder
+                .baseUrl(paymentServiceUrl)
+                .filter((request, next) -> next.exchange(request)
+                        .timeout(Duration.ofSeconds(8)) // Response timeout
+                        .retryWhen(Retry.backoff(2, Duration.ofMillis(500))
+                                .filter(throwable -> !(throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException)))
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                        .onErrorResume(throwable -> {
+                            if (throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException) {
+                                return Mono.error(new RuntimeException("payment service is currently unavailable"));
+                            }
+                            return Mono.error(throwable);
+                        }))
+                .build();
+    }
+
+    @Bean
     public WebClient userServiceWebClient(WebClient.Builder webClientBuilder,
                                           CircuitBreakerRegistry circuitBreakerRegistry,
                                           @Value("${services.user-service.url}") String userServiceUrl) {
