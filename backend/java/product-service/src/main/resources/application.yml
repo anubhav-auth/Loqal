@@ -8,17 +8,11 @@ spring:
       order-cancel-dlt: ${ORDER_CANCEL_DLT}
       order-creation-requested: ${ORDER_CREATTION_REQUESTED}
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
-  datasource:
+  r2dbc:
     url: ${DB_URL}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: ${DDL_AUTO_SETTING}
-    show-sql: true
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 server:
   port: ${PRODUCT_SERVER_PORT}

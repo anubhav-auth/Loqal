@@ -1,23 +1,19 @@
 package com.Loqal.productservice.repository;
 
 import com.Loqal.productservice.entity.Product;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
-public interface ProductRepository extends JpaRepository<Product, UUID> {
+public interface ProductRepository extends R2dbcRepository<Product, UUID> {
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM Product p WHERE p.id = :id")
-    Optional<Product> findByIdWithPessimisticLock(@Param("id") UUID id);
+    @Query("SELECT * FROM products WHERE id = :id FOR UPDATE")
+    Mono<Product> findByIdWithPessimisticLock(UUID id);
 
-    List<Product> findAllByMerchantId(UUID merchantId);
+    Flux<Product> findAllByMerchantId(UUID merchantId);
 
-    Optional<List<Product>> findAllByNameIgnoreCase(String query);
+    Flux<Product> findAllByNameIgnoreCase(String query);
 }
