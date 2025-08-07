@@ -12,11 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,7 +35,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<Object>> createOrder(
+    public Mono<ResponseEntity<Order>> createOrder(
             @Valid @RequestBody OrderRequest orderRequest,
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
@@ -52,17 +51,17 @@ public class OrderController {
                     log.info("Idempotency hit for key: {}. Returning cached response.", idempotencyKey);
                     return Mono.fromCallable(() -> objectMapper.readValue(cachedResponse, Order.class))
                             .subscribeOn(Schedulers.boundedElastic())
-                            .map(cachedOrder -> ResponseEntity.ok((Object) cachedOrder));
+                            .map(ResponseEntity::ok);
                 })
                 .switchIfEmpty(Mono.defer(() -> processOrderCreation(orderRequest, jwt, idempotencyKey)))
                 .onErrorResume(e -> {
                     log.error("Error during idempotent order creation for key: {}", idempotencyKey, e);
-                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error during order creation."));
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
                 });
     }
 
 
-    private Mono<ResponseEntity<Object>> processOrderCreation(OrderRequest orderRequest, Jwt jwt, String idempotencyKey) {
+    private Mono<ResponseEntity<Order>> processOrderCreation(OrderRequest orderRequest, Jwt jwt, String idempotencyKey) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
 
         return orderService.createOrder(orderRequest, userId)
@@ -79,46 +78,40 @@ public class OrderController {
                     }
                     return Mono.just(createdOrder);
                 })
-                .map(finalOrder -> ResponseEntity.status(HttpStatus.CREATED).body((Object) finalOrder));
+                .map(finalOrder -> ResponseEntity.status(HttpStatus.CREATED).body(finalOrder));
     }
 
-    // --- Other Endpoints Converted to Reactive (FIXED) ---
-
     @GetMapping("/my-orders")
-    public Mono<ResponseEntity<List<Order>>> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
+    public Flux<Order> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
-        return Mono.fromCallable(() -> orderService.getOrdersByUserId(userId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .map(ResponseEntity::ok);
+        return orderService.getOrdersByUserId(userId);
     }
 
     @GetMapping("/{orderId}")
     public Mono<ResponseEntity<Order>> getOrderById(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
-        return Mono.fromCallable(() -> orderService.getOrderByIdAndUserId(orderId, userId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .map(order -> ResponseEntity.ok(order))
-                .onErrorResume(e -> Mono.just(ResponseEntity.notFound().build()));
+        return orderService.getOrderByIdAndUserId(orderId, userId)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{orderId}/cancellation")
-    public Mono<ResponseEntity<Object>> cancelOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
+    public Mono<ResponseEntity<Void>> cancelOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
 
-        return Mono.fromRunnable(() -> orderService.cancelOrder(orderId, userId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .then(Mono.just(ResponseEntity.noContent().build()))
+        return orderService.cancelOrder(orderId, userId)
+                .then(Mono.just(ResponseEntity.noContent().<Void>build()))
                 .onErrorResume(SecurityException.class, e ->
-                        Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage())))
+                        Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()))
                 .onErrorResume(IllegalStateException.class, e ->
-                        Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage())));
+                        Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build()))
+                .onErrorResume(RuntimeException.class, e ->
+                        Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build()));
     }
 
     @GetMapping("/merchant")
-    public Mono<ResponseEntity<List<Order>>> getMerchantOrders(@AuthenticationPrincipal Jwt jwt) {
+    public Flux<Order> getMerchantOrders(@AuthenticationPrincipal Jwt jwt) {
         UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenant_id"));
-        return Mono.fromCallable(() -> orderService.getOrdersByMerchantId(merchantId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .map(ResponseEntity::ok);
+        return orderService.getOrdersByMerchantId(merchantId);
     }
 }

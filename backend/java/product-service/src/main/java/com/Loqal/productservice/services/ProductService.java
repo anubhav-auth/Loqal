@@ -19,13 +19,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.Comparator;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -45,78 +45,62 @@ public class ProductService {
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = "product-service-group")
     public void consumeOrderCreationRequest(OrderCreationRequest request) {
+        Mono.defer(() -> processedEventRepository.findById(request.getOrderId())
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalEvent -> {
+                    if (optionalEvent.isPresent()) {
+                        // Event exists: handle duplicate request
+                        ProcessedEvent event = optionalEvent.get();
+                        log.warn("Duplicate request for order {}. Status: {}. Resending original result.", request.getOrderId(), event.getStatus());
+                        StockReservationResponse originalResponse = new StockReservationResponse();
+                        originalResponse.setOrderId(event.getOrderId());
+                        originalResponse.setStatus(event.getStatus());
+                        if (event.getReason() != null) {
+                            originalResponse.setReason(event.getReason());
+                        }
+                        return Mono.fromFuture(kafkaTemplate.send(stockReservationResultTopic, originalResponse)).then(); // Return Mono<Void>
+                    } else {
+                        return processOrderCreation(request);
+                    }
+                })
+        ).subscribe();
+    }
 
-        Optional<ProcessedEvent> existingEvent = processedEventRepository.findById(request.getOrderId());
-
-        if (existingEvent.isPresent()) {
-            ProcessedEvent event = existingEvent.get();
-            log.warn("Duplicate request for order {}. Status: {}. Resending original result.",
-                    request.getOrderId(), event.getStatus());
-
-            StockReservationResponse originalResponse = new StockReservationResponse();
-            originalResponse.setOrderId(event.getOrderId());
-            originalResponse.setStatus(event.getStatus());
-            if (event.getReason() != null) {
-                originalResponse.setReason(event.getReason());
-            }
-
-            // Send async to avoid blocking
-            CompletableFuture.runAsync(() ->
-                    kafkaTemplate.send(stockReservationResultTopic, originalResponse));
-            return;
-        }
-
-        // 2. Process the request and store the result
-        ProcessedEvent eventToStore = new ProcessedEvent();
-        eventToStore.setOrderId(request.getOrderId());
+    private Mono<Void> processOrderCreation(OrderCreationRequest request) {
         StockReservationResponse response = new StockReservationResponse();
         response.setOrderId(request.getOrderId());
 
-        try {
-            List<ProductOrderRequest> sortedItems = request.getItems().stream()
-                    .sorted(Comparator.comparing(ProductOrderRequest::getProductId))
-                    .toList();
-
-            for (ProductOrderRequest item : sortedItems) {
-                Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
-                        .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId()));
-
-                if (product.getQuantity() < item.getQuantity()) {
-                    throw new InsufficientStockException("Insufficient stock for product ID: " + product.getId());
-                }
-
-                product.setQuantity(product.getQuantity() - item.getQuantity());
-                productRepository.save(product);
-            }
-
-            response.setStatus("SUCCESS");
-            log.info("Stock successfully reserved for order {}", request.getOrderId());
-            eventToStore.setStatus("SUCCESS");
-            processedEventRepository.save(eventToStore);
-        } catch (Exception e) {
-            // IMPORTANT: The transaction will roll back, undoing any partial stock changes.
-            log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
-            response.setStatus("FAILED");
-            response.setReason(e.getMessage());
-            saveFailureEventInNewTransaction(request.getOrderId(), e.getMessage());
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                kafkaTemplate.send(stockReservationResultTopic, response);
-            }
-        });
+        return Flux.fromIterable(request.getItems())
+                .sort(Comparator.comparing(ProductOrderRequest::getProductId))
+                .concatMap(item -> productRepository.findByIdWithPessimisticLock(item.getProductId())
+                        .switchIfEmpty(Mono.error(new ProductNotFoundException(item.getProductId())))
+                        .flatMap(product -> {
+                            if (product.getQuantity() < item.getQuantity()) {
+                                return Mono.error(new InsufficientStockException("Insufficient stock for product ID: " + product.getId()));
+                            }
+                            product.setQuantity(product.getQuantity() - item.getQuantity());
+                            return productRepository.save(product);
+                        }))
+                .then(Mono.defer(() -> {
+                    response.setStatus("SUCCESS");
+                    log.info("Stock successfully reserved for order {}", request.getOrderId());
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "SUCCESS", null);
+                    return processedEventRepository.save(event);
+                }))
+                .doOnSuccess(event -> kafkaTemplate.send(stockReservationResultTopic, response))
+                .onErrorResume(e -> {
+                    log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
+                    response.setStatus("FAILED");
+                    response.setReason(e.getMessage());
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "FAILED", e.getMessage());
+                    return processedEventRepository.save(event)
+                            .doOnSuccess(savedEvent -> kafkaTemplate.send(stockReservationResultTopic, response))
+                            .then(Mono.empty());
+                })
+                .then();
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveFailureEventInNewTransaction(UUID orderId, String errorMessage) {
-        ProcessedEvent failureEvent = new ProcessedEvent();
-        failureEvent.setOrderId(orderId);
-        failureEvent.setStatus("FAILED");
-        failureEvent.setReason(errorMessage);
-        processedEventRepository.save(failureEvent);
-    }
 
     @KafkaListener(topics = "${spring.kafka.topic.order-cancel-dlt}", groupId = "product-service-dlt-group")
     public void consumeOrderCancellationDLT(ConsumerRecord<String, Object> record) {
@@ -127,39 +111,38 @@ public class ProductService {
     @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = "product-service-group")
     public void consumeOrderCancellation(OrderCancellationEvent request) {
-        Optional<ProcessedEvent> existingEvent = processedEventRepository.findById(request.getOrderId());
-        if (existingEvent.isPresent() && "CANCELLED".equals(existingEvent.get().getStatus())) {
-            log.warn("Duplicate cancellation request for order {}. Ignoring.", request.getOrderId());
-            return;
-        }
-
-        log.info("Received event to revert stock for a cancelled order.");
-        try {
-            List<ProductOrderRequest> sortedItems = request.getItems().stream()
-                    .sorted(Comparator.comparing(ProductOrderRequest::getProductId))
-                    .toList();
-
-            for (ProductOrderRequest item : sortedItems) {
-                Product product = productRepository.findByIdWithPessimisticLock(item.getProductId())
-                        .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId()));
-
-                product.setQuantity(product.getQuantity() + item.getQuantity());
-                productRepository.save(product);
-                log.info("Reverted {} units of stock for product {}. New stock: {}", item.getQuantity(), product.getName(), product.getQuantity());
-            }
-
-            ProcessedEvent eventToStore = existingEvent.orElse(new ProcessedEvent());
-            eventToStore.setOrderId(request.getOrderId());
-            eventToStore.setStatus("CANCELLED"); // Use a clear status for cancellation
-            eventToStore.setReason(null); // Clear any previous failure reason
-            processedEventRepository.save(eventToStore);
-        } catch (Exception e) {
-            log.error("Failed to process order cancellation event. Error: {}. This may require manual intervention.", e.getMessage());
-            throw e;
-        }
+        processedEventRepository.findById(request.getOrderId())
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalEvent -> {
+                    if (optionalEvent.isPresent() && "CANCELLED".equals(optionalEvent.get().getStatus())) {
+                        log.warn("Duplicate cancellation request for order {}. Ignoring.", request.getOrderId());
+                        return Mono.empty();
+                    } else {
+                        return processOrderCancellation(request);
+                    }
+                })
+                .subscribe();
     }
 
-    public Product create(ProductDTO product, UUID merchantId) {
+    private Mono<Void> processOrderCancellation(OrderCancellationEvent request) {
+        return Flux.fromIterable(request.getItems())
+                .sort(Comparator.comparing(ProductOrderRequest::getProductId))
+                .concatMap(item -> productRepository.findByIdWithPessimisticLock(item.getProductId())
+                        .switchIfEmpty(Mono.error(new ProductNotFoundException(item.getProductId())))
+                        .flatMap(product -> {
+                            product.setQuantity(product.getQuantity() + item.getQuantity());
+                            return productRepository.save(product);
+                        }))
+                .then(Mono.defer(() -> {
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "CANCELLED", null);
+                    return processedEventRepository.save(event);
+                }))
+                .doOnError(e -> log.error("Failed to process order cancellation event. Error: {}. This may require manual intervention.", e.getMessage()))
+                .then();
+    }
+
+    public Mono<Product> create(ProductDTO product, UUID merchantId) {
         Product newProduct = new Product();
         newProduct.setName(product.name());
         newProduct.setPrice(product.price());
@@ -168,41 +151,43 @@ public class ProductService {
         return productRepository.save(newProduct);
     }
 
-    public List<Product> getAllByMerchant(UUID tenantId) {
+    public Flux<Product> getAllByMerchant(UUID tenantId) {
         return productRepository.findAllByMerchantId(tenantId);
     }
 
-    public Product getById(UUID id) {
+    public Mono<Product> getById(UUID id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
+                .switchIfEmpty(Mono.error(new ProductNotFoundException(id)));
     }
 
-    public Product update(UUID id, ProductDTO product, UUID merchantId) {
-        Product existingProduct = getById(id);
-
-        if (!existingProduct.getMerchantId().equals(merchantId)) {
-            throw new UnauthorizedProductAccessException();
-        }
-
-        existingProduct.setName(product.name());
-        existingProduct.setPrice(product.price());
-        existingProduct.setQuantity(product.quantity());
-        return productRepository.save(existingProduct);
+    public Mono<Product> update(UUID id, ProductDTO product, UUID merchantId) {
+        return getById(id)
+                .flatMap(existingProduct -> {
+                    if (!existingProduct.getMerchantId().equals(merchantId)) {
+                        return Mono.error(new UnauthorizedProductAccessException());
+                    }
+                    existingProduct.setName(product.name());
+                    existingProduct.setPrice(product.price());
+                    existingProduct.setQuantity(product.quantity());
+                    return productRepository.save(existingProduct);
+                });
     }
 
-    public void delete(UUID id, UUID merchantId) {
-        Product product = getById(id);
-        if (!product.getMerchantId().equals(merchantId)) {
-            throw new UnauthorizedProductAccessException();
-        }
-        productRepository.delete(product);
-        log.info("Deleted product with ID: {}", id);
+    public Mono<Void> delete(UUID id, UUID merchantId) {
+        return getById(id)
+                .flatMap(product -> {
+                    if (!product.getMerchantId().equals(merchantId)) {
+                        return Mono.error(new UnauthorizedProductAccessException());
+                    }
+                    return productRepository.delete(product);
+                })
+                .doOnSuccess(v -> log.info("Deleted product with ID: {}", id));
     }
 
-    public List<Product> search(String query) {
+    public Flux<Product> search(String query) {
         if (query == null || query.isBlank()) {
-            return Collections.emptyList();
+            return Flux.empty();
         }
-        return productRepository.findAllByNameIgnoreCase(query).orElse(Collections.emptyList());
+        return productRepository.findAllByNameIgnoreCase(query);
     }
 }

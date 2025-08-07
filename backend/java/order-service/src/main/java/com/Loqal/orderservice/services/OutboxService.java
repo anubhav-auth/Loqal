@@ -29,8 +29,8 @@ public class OutboxService {
     @Value("${spring.kafka.topic.order-cancel}")
     private String stockReversionRequestTopic;
 
-    @SneakyThrows // Handles JsonProcessingException
-    @Transactional // Will participate in the calling method's transaction
+    @SneakyThrows
+    @Transactional
     public void requestStockReservation(Order order) {
         List<ProductOrderRequest> items = order.getItems().stream()
                 .map(item -> new ProductOrderRequest(item.getProductId(), item.getPriceAtPurchase(), item.getQuantity()))

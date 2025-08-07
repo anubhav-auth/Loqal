@@ -1,12 +1,11 @@
 package com.Loqal.orderservice.repository;
 
 import com.Loqal.orderservice.entity.OutboxEvent;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import reactor.core.publisher.Flux;
 
-import java.util.List;
 import java.util.UUID;
 
-public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> {
-    // Find events that need to be published
-    List<OutboxEvent> findTop100ByOrderByCreatedAt();
+public interface OutboxEventRepository extends R2dbcRepository<OutboxEvent, UUID> {
+    Flux<OutboxEvent> findTop100ByOrderByCreatedAt();
 }

@@ -6,19 +6,11 @@ spring:
     name: order-service
 
   # == DATABASE ==
-  datasource:
+  r2dbc:
     url: ${DB_URL}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: ${DDL_AUTO_SETTING}
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
 
   data:
     redis:
@@ -46,3 +38,7 @@ logging:
     root: INFO
     org.springframework.web: DEBUG
     com.Loqal.orderservice: DEBUG
+
+outbox:
+  relay:
+    delay: 10000 # 10 seconds
