@@ -36,7 +36,7 @@ public class OrderService {
     private final WebClient productServiceWebClient;
     private final OutboxService outboxService;
 
-    @Value("${spring.kafka.topic.order-cancel}") // Standardized topic name
+    @Value("${spring.kafka.topic.order-cancel}")
     private String orderCancellationTopic;
 
 
