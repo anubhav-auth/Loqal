@@ -29,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -65,10 +66,10 @@ public class AuthService {
         return userCredentialRepository.findByEmail(request.email())
                 .flatMap(existingUser -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already registered")))
                 .switchIfEmpty(Mono.defer(() -> {
-                    UserCredential user = new UserCredential();
-                    user.setEmail(request.email());
-                    user.setPasswordHash(passwordEncoder.encode(request.password()));
-                    return userCredentialRepository.save(user);
+                    UUID newUserId = UUID.randomUUID();
+                    String hashedPassword = passwordEncoder.encode(request.password());
+                    LocalDateTime creationTime = LocalDateTime.now();
+                    return userCredentialRepository.insertNewUser(newUserId, request.email(), hashedPassword, creationTime);
                 }))
                 .flatMap(savedUser -> {
                     UserOauthRegisterDto dto = UserOauthRegisterDto.builder()
@@ -165,23 +166,27 @@ public class AuthService {
 
     private Mono<RefreshToken> saveRefreshToken(String email, String tokenValue) {
         return refreshTokenRepository.findByEmail(email)
-                .defaultIfEmpty(new RefreshToken())
-                .flatMap(token -> {
-                    token.setEmail(email);
-                    token.setToken(tokenValue);
-                    token.setExpiration(Instant.now().plusMillis(refreshTokenExpiration));
-                    return refreshTokenRepository.save(token);
-                });
+                .flatMap(existingToken -> refreshTokenRepository.updateTokenByEmail(
+                        email,
+                        tokenValue,
+                        Instant.now().plusMillis(refreshTokenExpiration)
+                ))
+                .switchIfEmpty(Mono.defer(() -> refreshTokenRepository.insertNewToken(
+                        UUID.randomUUID(),
+                        tokenValue,
+                        email,
+                        Instant.now().plusMillis(refreshTokenExpiration)
+                )));
     }
 
     private Mono<UserCredential> registerOrFindOAuthUser(String email, String fullName, String phoneNumber) {
         return userCredentialRepository.findByEmail(email)
-                .switchIfEmpty(Mono.defer(() -> {
-                    UserCredential newUser = new UserCredential();
-                    newUser.setEmail(email);
-                    newUser.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
-                    return userCredentialRepository.save(newUser);
-                }));
+                .switchIfEmpty(Mono.defer(() -> userCredentialRepository.insertNewUser(
+                        UUID.randomUUID(),
+                        email,
+                        passwordEncoder.encode(UUID.randomUUID().toString()),
+                        LocalDateTime.now()
+                )));
     }
 
     private Mono<Map<String, Object>> exchangeCodeForGoogleTokens(String code) {

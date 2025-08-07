@@ -29,26 +29,30 @@ public class UserService {
 
     @Transactional
     public Mono<UserProfileDto> register(UserRegisterDto dto) {
+
+        String[] rolesAsStrings = List.of(UserRoles.USER)
+                .stream()
+                .map(Enum::name)
+                .toArray(String[]::new);
+
         return repo.findByEmail(dto.getEmail())
                 .flatMap(existingUser -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists")))
-                .switchIfEmpty(Mono.defer(() -> {
-                    User user = User.builder()
-                            .fullName(dto.getFullName())
-                            .email(dto.getEmail())
-                            .phoneNumber(dto.getPhoneNumber())
-                            .profilePictureUrl(dto.getProfilePictureUrl())
-                            .tenantId(dto.getTenantId())
-                            .street(dto.getAddress().getStreet())
-                            .city(dto.getAddress().getCity())
-                            .state(dto.getAddress().getState())
-                            .postalCode(dto.getAddress().getPostalCode())
-                            .country(dto.getAddress().getCountry())
-                            .roles(List.of(UserRoles.USER))
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build();
-                    return repo.save(user).map(this::mapToProfile);
-                }))
+                .switchIfEmpty(Mono.defer(() -> repo.insertNewUser(
+                        UUID.randomUUID(),
+                        dto.getEmail(),
+                        dto.getFullName(),
+                        dto.getPhoneNumber(),
+                        dto.getProfilePictureUrl(),
+                        rolesAsStrings,
+                        dto.getAddress().getStreet(),
+                        dto.getAddress().getCity(),
+                        dto.getAddress().getState(),
+                        dto.getAddress().getPostalCode(),
+                        dto.getAddress().getCountry(),
+                        dto.getTenantId(),
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ).map(this::mapToProfile)))
                 .cast(UserProfileDto.class);
     }
 
@@ -73,25 +77,29 @@ public class UserService {
 
     @Transactional
     public Mono<UserInfoDto> registerOrUpdateFromOAuth(UserOauthRegisterDto dto) {
+
+        String[] rolesAsStrings = List.of(UserRoles.USER)
+                .stream()
+                .map(Enum::name)
+                .toArray(String[]::new);
+
         return repo.findByEmail(dto.getEmail())
-                .switchIfEmpty(Mono.defer(() -> {
-                    User newUser = User.builder()
-                            .email(dto.getEmail())
-                            .fullName(dto.getFullName())
-                            .phoneNumber(dto.getPhoneNumber())
-                            .profilePictureUrl(dto.getProfilePictureUrl())
-                            .street(dto.getAddress().getStreet())
-                            .city(dto.getAddress().getCity())
-                            .state(dto.getAddress().getState())
-                            .postalCode(dto.getAddress().getPostalCode())
-                            .country(dto.getAddress().getCountry())
-                            .tenantId(dto.getTenantId())
-                            .roles(List.of(UserRoles.USER))
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build();
-                    return repo.save(newUser);
-                }))
+                .switchIfEmpty(Mono.defer(() -> repo.insertNewUser(
+                        UUID.randomUUID(),
+                        dto.getEmail(),
+                        dto.getFullName(),
+                        dto.getPhoneNumber(),
+                        dto.getProfilePictureUrl(),
+                        rolesAsStrings,
+                        dto.getAddress().getStreet(),
+                        dto.getAddress().getCity(),
+                        dto.getAddress().getState(),
+                        dto.getAddress().getPostalCode(),
+                        dto.getAddress().getCountry(),
+                        dto.getTenantId(),
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                )))
                 .map(user -> UserInfoDto.builder()
                         .userId(user.getId())
                         .roles(user.getRoles())
