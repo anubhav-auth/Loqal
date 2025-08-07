@@ -1,6 +1,8 @@
 package com.Loqal.orderservice.controller;
 
 import com.Loqal.orderservice.dto.OrderRequest;
+import com.Loqal.orderservice.dto.ProductOrderRequest;
+import com.Loqal.orderservice.dto.events.OrderCreationResponse;
 import com.Loqal.orderservice.entity.Order;
 import com.Loqal.orderservice.services.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +18,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -35,7 +38,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<Order>> createOrder(
+    public Mono<ResponseEntity<OrderCreationResponse>> createOrder(
             @Valid @RequestBody OrderRequest orderRequest,
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
@@ -49,7 +52,7 @@ public class OrderController {
         return reactiveRedisTemplate.opsForValue().get(cacheKey)
                 .flatMap(cachedResponse -> {
                     log.info("Idempotency hit for key: {}. Returning cached response.", idempotencyKey);
-                    return Mono.fromCallable(() -> objectMapper.readValue(cachedResponse, Order.class))
+                    return Mono.fromCallable(() -> objectMapper.readValue(cachedResponse, OrderCreationResponse.class))
                             .subscribeOn(Schedulers.boundedElastic())
                             .map(ResponseEntity::ok);
                 })
@@ -60,25 +63,25 @@ public class OrderController {
                 });
     }
 
-
-    private Mono<ResponseEntity<Order>> processOrderCreation(OrderRequest orderRequest, Jwt jwt, String idempotencyKey) {
+    private Mono<ResponseEntity<OrderCreationResponse>> processOrderCreation(OrderRequest orderRequest, Jwt jwt, String idempotencyKey) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("sub"));
 
+
         return orderService.createOrder(orderRequest, userId)
-                .flatMap(createdOrder -> {
+                .flatMap(creationResponse -> {
                     if (idempotencyKey != null) {
                         String cacheKey = IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
-                        return Mono.fromCallable(() -> objectMapper.writeValueAsString(createdOrder))
+                        return Mono.fromCallable(() -> objectMapper.writeValueAsString(creationResponse))
                                 .subscribeOn(Schedulers.boundedElastic())
                                 .flatMap(responseToCache ->
                                         reactiveRedisTemplate.opsForValue()
                                                 .set(cacheKey, responseToCache, Duration.ofHours(24))
                                 )
-                                .thenReturn(createdOrder);
+                                .thenReturn(creationResponse);
                     }
-                    return Mono.just(createdOrder);
+                    return Mono.just(creationResponse);
                 })
-                .map(finalOrder -> ResponseEntity.status(HttpStatus.CREATED).body(finalOrder));
+                .map(finalResponse -> ResponseEntity.status(HttpStatus.CREATED).body(finalResponse));
     }
 
     @GetMapping("/my-orders")
