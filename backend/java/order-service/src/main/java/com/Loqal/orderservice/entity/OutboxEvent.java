@@ -1,32 +1,21 @@
 package com.Loqal.orderservice.entity;
 
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "outbox_events")
+@Table("outbox_events")
 @Getter
 @Setter
 public class OutboxEvent {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
-
-    @Column(nullable = false)
-    private String aggregateType; // e.g., "Order"
-
-    @Column(nullable = false)
-    private String eventType; // e.g., "ORDER_CANCELLATION_REQUESTED"
-
-    @Column(name = "payload", columnDefinition = "TEXT", nullable = false)
-    private String payload; // JSON payload
-
-    @Column(nullable = false)
-    private String destinationTopic; // Kafka topic name
-
+    private String aggregateType;
+    private String eventType;
+    private String payload;
+    private String destinationTopic;
     private LocalDateTime createdAt = LocalDateTime.now();
 }
