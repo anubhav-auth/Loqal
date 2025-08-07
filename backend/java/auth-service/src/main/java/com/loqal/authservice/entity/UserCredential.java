@@ -4,9 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 
@@ -14,7 +16,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserCredential {
+public class UserCredential implements Persistable<UUID> {
 
     @Id
     private UUID id;
@@ -24,5 +26,13 @@ public class UserCredential {
 
     @Column("password_hash")
     private String passwordHash;
+
+    @Column("created_at")
+    private LocalDateTime createdAt;
+
+    @Override
+    public boolean isNew() {
+        return this.createdAt == null;
+    }
 }
 
