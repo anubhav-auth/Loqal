@@ -1,4 +1,4 @@
-import com.loqal.merchantservice.dto.ProductDto;
+package com.loqal.merchantservice.dto;
 
 import java.util.List;
 
