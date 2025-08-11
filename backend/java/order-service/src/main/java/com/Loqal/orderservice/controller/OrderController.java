@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/orders")
 @Slf4j
 public class OrderController {
 
@@ -112,9 +112,8 @@ public class OrderController {
                         Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build()));
     }
 
-    @GetMapping("/merchant")
-    public Flux<Order> getMerchantOrders(@AuthenticationPrincipal Jwt jwt) {
-        UUID merchantId = UUID.fromString(jwt.getClaimAsString("tenant_id"));
+    @GetMapping("/merchant/{merchantId}")
+    public Flux<Order> getMerchantOrders(@RequestParam UUID merchantId) {
         return orderService.getOrdersByMerchantId(merchantId);
     }
 }
