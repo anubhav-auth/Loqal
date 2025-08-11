@@ -83,7 +83,6 @@ public class OrderService {
         // The initial status is now PENDING_PAYMENT.
         order.setCurrentStatus(OrderStatus.ORDER_PAYMENT_PENDING);
 
-        // This block is preserved from your original code to fetch product details and prices.
         return Flux.fromIterable(req.getItems())
                 .flatMap(itemReq ->
                         productServiceWebClient.get()
