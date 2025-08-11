@@ -1,5 +1,6 @@
 package com.Loqal.productservice.services;
 
+import com.Loqal.productservice.dto.UpdateStockRequestDto;
 import com.Loqal.productservice.dto.events.OrderCancellationEvent;
 import com.Loqal.productservice.dto.events.OrderCreationRequest;
 import com.Loqal.productservice.dto.events.StockReservationResponse;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
@@ -145,8 +147,13 @@ public class ProductService {
     public Mono<Product> create(ProductDTO product, UUID merchantId) {
         Product newProduct = new Product();
         newProduct.setName(product.name());
+        newProduct.setDescription(product.description());
+        newProduct.setCategory_name(product.category().getCategory_name());
+        newProduct.setCategory_description(product.category().getCategory_description());
         newProduct.setPrice(product.price());
         newProduct.setQuantity(product.quantity());
+        newProduct.setImage_urls(product.image_urls());
+        newProduct.setCreated_at(LocalDateTime.now());
         newProduct.setMerchantId(merchantId);
         return productRepository.save(newProduct);
     }
@@ -160,15 +167,13 @@ public class ProductService {
                 .switchIfEmpty(Mono.error(new ProductNotFoundException(id)));
     }
 
-    public Mono<Product> update(UUID id, ProductDTO product, UUID merchantId) {
+    public Mono<Product> update(UUID id, UUID merchantId, UpdateStockRequestDto product) {
         return getById(id)
                 .flatMap(existingProduct -> {
                     if (!existingProduct.getMerchantId().equals(merchantId)) {
                         return Mono.error(new UnauthorizedProductAccessException());
                     }
-                    existingProduct.setName(product.name());
-                    existingProduct.setPrice(product.price());
-                    existingProduct.setQuantity(product.quantity());
+                    existingProduct.setQuantity(existingProduct.getQuantity() + product.newStock());
                     return productRepository.save(existingProduct);
                 });
     }
