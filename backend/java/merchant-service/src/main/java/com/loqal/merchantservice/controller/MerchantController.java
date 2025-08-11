@@ -47,12 +47,16 @@ public class MerchantController {
 
 
     @PutMapping("/{merchantId}/inventory/{productId}")
-    public ResponseEntity<Void> updateInventoryForProduct(
+    public ResponseEntity<ProductDto> updateInventoryForProduct(
             @PathVariable String merchantId,
             @PathVariable String productId,
             @RequestBody UpdateStockRequestDto stockRequest) {
-        merchantService.updateInventory(merchantId, productId, stockRequest);
-        return ResponseEntity.ok().build();
+        ProductDto productDto = merchantService.updateInventory(merchantId, productId, stockRequest);
+        if (productDto == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(productDto);
     }
 
 
