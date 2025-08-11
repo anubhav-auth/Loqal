@@ -1,9 +1,12 @@
 package com.Loqal.productservice.controller;
 
+import com.Loqal.productservice.dto.UpdateStockRequestDto;
+import com.Loqal.productservice.entity.Category;
 import com.Loqal.productservice.entity.Product;
 import com.Loqal.productservice.entity.ProductDTO;
 import com.Loqal.productservice.services.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.relational.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,19 +24,24 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @PostMapping
-    public Mono<ResponseEntity<Product>> createProduct(@RequestBody ProductDTO product, @AuthenticationPrincipal Mono<Jwt> jwtMono) {
-        return jwtMono
-                .map(jwt -> UUID.fromString(jwt.getClaimAsString("tenant_id")))
-                .flatMap(merchantId -> productService.create(product, merchantId))
+    @PostMapping("/{merchantId}")
+    public Mono<ResponseEntity<Product>> createProduct(@PathVariable UUID merchantId, @RequestBody ProductDTO product) {
+        return productService.create(product, merchantId)
                 .map(createdProduct -> new ResponseEntity<>(createdProduct, HttpStatus.CREATED));
     }
 
     @GetMapping("/merchant")
-    public Flux<Product> getProductsForMerchant(@AuthenticationPrincipal Mono<Jwt> jwtMono) {
-        return jwtMono
-                .map(jwt -> UUID.fromString(jwt.getClaimAsString("tenant_id")))
-                .flatMapMany(productService::getAllByMerchant);
+    public Flux<ProductDTO> getProductsForMerchant(UUID merchantId) {
+        return productService.getAllByMerchant(merchantId)
+                .map(item -> new ProductDTO(
+                        item.getId(),
+                        item.getName(),
+                        item.getDescription(),
+                        new Category(item.getCategory_name(), item.getCategory_description()),
+                        item.getPrice(),
+                        item.getQuantity(),
+                        item.getImage_urls()
+                ));
     }
 
     @GetMapping("/{id}")
@@ -43,20 +51,25 @@ public class ProductController {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/{id}")
-    public Mono<ResponseEntity<Product>> updateProduct(@PathVariable UUID id, @RequestBody ProductDTO product, @AuthenticationPrincipal Mono<Jwt> jwtMono) {
-        return jwtMono
-                .map(jwt -> UUID.fromString(jwt.getClaimAsString("tenant_id")))
-                .flatMap(merchantId -> productService.update(id, product, merchantId))
+    @PutMapping("/{productId}/{merchantId}")
+    public Mono<ResponseEntity<ProductDTO>> updateProduct(@PathVariable UUID productId, @PathVariable UUID merchantId, @RequestBody UpdateStockRequestDto product) {
+        return productService.update(productId, merchantId, product)
+                .map(item -> new ProductDTO(
+                        item.getId(),
+                        item.getName(),
+                        item.getDescription(),
+                        new Category(item.getCategory_name(), item.getCategory_description()),
+                        item.getPrice(),
+                        item.getQuantity(),
+                        item.getImage_urls()
+                ))
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Void>> deleteProduct(@PathVariable UUID id, @AuthenticationPrincipal Mono<Jwt> jwtMono) {
-        return jwtMono
-                .map(jwt -> UUID.fromString(jwt.getClaimAsString("tenant_id")))
-                .flatMap(merchantId -> productService.delete(id, merchantId))
+    @DeleteMapping("/{id}/{merchantId}")
+    public Mono<ResponseEntity<Void>> deleteProduct(@PathVariable UUID id, @PathVariable UUID merchantId) {
+        return productService.delete(id, merchantId)
                 .then(Mono.just(new ResponseEntity<Void>(HttpStatus.NO_CONTENT)))
                 .defaultIfEmpty(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
