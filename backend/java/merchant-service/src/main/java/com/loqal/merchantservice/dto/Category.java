@@ -1,4 +1,4 @@
-package com.Loqal.productservice.entity;
+package com.loqal.merchantservice.dto;
 
 import jakarta.persistence.Embeddable;
 import lombok.Data;
