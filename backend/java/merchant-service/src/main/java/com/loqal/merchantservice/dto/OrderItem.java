@@ -1,12 +1,12 @@
-package com.Loqal.orderservice.entity;
+package com.loqal.merchantservice.dto;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+
 import java.util.UUID;
 
 @Data
 public class OrderItem {
-    @Id
     private UUID id;
     private UUID orderId;
     private UUID productId;
