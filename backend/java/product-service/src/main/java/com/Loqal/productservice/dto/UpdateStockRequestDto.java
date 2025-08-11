@@ -1,4 +1,4 @@
-package com.loqal.merchantservice.dto;
+package com.Loqal.productservice.dto;
 
 public record UpdateStockRequestDto(
         int newStock
