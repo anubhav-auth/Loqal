@@ -1,16 +1,14 @@
 package com.loqal.merchantservice;
 
-import com.loqal.merchantservice.config.WebClientConfig;
 import com.loqal.merchantservice.dto.*;
 import com.loqal.merchantservice.entity.MerchantExtended;
+import com.loqal.merchantservice.entity.Order;
 import com.loqal.merchantservice.repository.MerchantExtendedRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.UUID;
@@ -123,8 +121,19 @@ public class MerchantService {
     }
 
 
-    public List<OrderDto> getOrdersForMerchant(String merchantId, String status) {
-        return null;
+    public List<Order> getOrdersForMerchant(String merchantId) {
+        return orderServiceWebClient.get()
+                .uri(uriBuilder ->
+                        uriBuilder.path("/orders/merchant/{merchantId}")
+                                .build(merchantId)
+                )
+                .retrieve()
+                .bodyToFlux(Order.class)
+                .doOnError(error ->
+                        System.err.println("Failed to fetch orders: " + error.getMessage())
+                )
+                .collectList()
+                .block();
     }
 
     public OrderDto updateOrderStatus(String merchantId, String orderId, UpdateStatusRequestDto statusRequest) {
