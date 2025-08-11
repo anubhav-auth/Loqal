@@ -49,13 +49,36 @@ public class WebClientConfig {
         return webClientBuilder
                 .baseUrl(productServiceUrl)
                 .filter((request, next) -> next.exchange(request)
-                        .timeout(Duration.ofSeconds(8)) // Response timeout
+                        .timeout(Duration.ofSeconds(8))
                         .retryWhen(Retry.backoff(2, Duration.ofMillis(500))
                                 .filter(throwable -> !(throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException)))
                         .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                         .onErrorResume(throwable -> {
                             if (throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException) {
                                 return Mono.error(new RuntimeException("Product service is currently unavailable"));
+                            }
+                            return Mono.error(throwable);
+                        }))
+                .build();
+    }
+
+    @Bean
+    public WebClient orderServiceWebClient(WebClient.Builder webClientBuilder,
+                                             CircuitBreakerRegistry circuitBreakerRegistry,
+                                             @Value("${services.order-service.url}") String orderServiceUrl) {
+
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("orderService");
+
+        return webClientBuilder
+                .baseUrl(orderServiceUrl)
+                .filter((request, next) -> next.exchange(request)
+                        .timeout(Duration.ofSeconds(8))
+                        .retryWhen(Retry.backoff(2, Duration.ofMillis(500))
+                                .filter(throwable -> !(throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException)))
+                        .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                        .onErrorResume(throwable -> {
+                            if (throwable instanceof io.github.resilience4j.circuitbreaker.CallNotPermittedException) {
+                                return Mono.error(new RuntimeException("Order service is currently unavailable"));
                             }
                             return Mono.error(throwable);
                         }))
