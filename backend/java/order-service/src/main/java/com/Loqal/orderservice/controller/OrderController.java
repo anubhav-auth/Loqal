@@ -114,6 +114,7 @@ public class OrderController {
 
     @GetMapping("/merchant/{merchantId}")
     public Flux<Order> getMerchantOrders(@PathVariable UUID merchantId) {
+
         return orderService.getOrdersByMerchantId(merchantId);
     }
 

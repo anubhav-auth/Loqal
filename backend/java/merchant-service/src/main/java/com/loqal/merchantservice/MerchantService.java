@@ -149,6 +149,7 @@ public class MerchantService {
                 )
                 .collectList()
                 .block();
+
     }
 
 //    TODO: Implement this method to fetch sales analytics for a merchant
