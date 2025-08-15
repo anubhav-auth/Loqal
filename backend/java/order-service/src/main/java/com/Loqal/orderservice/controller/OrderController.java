@@ -1,7 +1,7 @@
 package com.Loqal.orderservice.controller;
 
+import com.Loqal.orderservice.dto.OrderDto;
 import com.Loqal.orderservice.dto.OrderRequest;
-import com.Loqal.orderservice.dto.ProductOrderRequest;
 import com.Loqal.orderservice.dto.events.OrderCreationResponse;
 import com.Loqal.orderservice.entity.Order;
 import com.Loqal.orderservice.services.OrderService;
@@ -113,7 +113,11 @@ public class OrderController {
     }
 
     @GetMapping("/merchant/{merchantId}")
-    public Flux<Order> getMerchantOrders(@RequestParam UUID merchantId) {
+    public Flux<Order> getMerchantOrders(@PathVariable UUID merchantId) {
+
         return orderService.getOrdersByMerchantId(merchantId);
     }
+
+    
+
 }

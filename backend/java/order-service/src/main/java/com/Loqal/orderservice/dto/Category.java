@@ -1,10 +1,8 @@
-package com.loqal.merchantservice.dto;
+package com.Loqal.orderservice.dto;
 
-import jakarta.persistence.Embeddable;
 import lombok.Data;
 
 @Data
-@Embeddable
 public class Category {
     private String category_name;
     private String category_description;
