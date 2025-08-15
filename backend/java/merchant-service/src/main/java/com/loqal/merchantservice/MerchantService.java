@@ -137,9 +137,21 @@ public class MerchantService {
     }
 
     public OrderDto updateOrderStatus(String merchantId, String orderId, UpdateStatusRequestDto statusRequest) {
-        return null;
+        return orderServiceWebClient.get()
+                .uri(uriBuilder ->
+                        uriBuilder.path("/orders/merchant/{merchantId}")
+                                .build(merchantId)
+                )
+                .retrieve()
+                .bodyToFlux(OrderDto.class)
+                .doOnError(error ->
+                        System.err.println("Failed to fetch orders: " + error.getMessage())
+                )
+                .collectList()
+                .block();
     }
 
+//    TODO: Implement this method to fetch sales analytics for a merchant
     public AnalyticsDto getSalesAnalyticsForMerchant(String merchantId) {
         return null;
     }
