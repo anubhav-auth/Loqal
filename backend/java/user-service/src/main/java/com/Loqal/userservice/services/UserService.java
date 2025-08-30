@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,10 +20,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository repo;
+    private final UserRepository userRepository;
 
     public Mono<UserProfileDto> getProfile(UUID id) {
-        return repo.findById(id)
+        return userRepository.findById(id)
                 .map(this::mapToProfile)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found for ID: " + id)));
     }
@@ -35,9 +36,9 @@ public class UserService {
                 .map(Enum::name)
                 .toArray(String[]::new);
 
-        return repo.findByEmail(dto.getEmail())
+        return userRepository.findByEmail(dto.getEmail())
                 .flatMap(existingUser -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists")))
-                .switchIfEmpty(Mono.defer(() -> repo.insertNewUser(
+                .switchIfEmpty(Mono.defer(() -> userRepository.insertNewUser(
                         UUID.randomUUID(),
                         dto.getEmail(),
                         dto.getFullName(),
@@ -58,7 +59,7 @@ public class UserService {
 
     @Transactional
     public Mono<UserProfileDto> updateProfile(UUID id, UserProfileDto dto) {
-        return repo.findById(id)
+        return userRepository.findById(id)
                 .flatMap(user -> {
                     user.setFullName(dto.getFullName());
                     user.setPhoneNumber(dto.getPhoneNumber());
@@ -69,7 +70,7 @@ public class UserService {
                     user.setPostalCode(dto.getAddress().getPostalCode());
                     user.setCountry(dto.getAddress().getCountry());
                     user.setUpdatedAt(LocalDateTime.now());
-                    return repo.save(user);
+                    return userRepository.save(user);
                 })
                 .map(this::mapToProfile)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")));
@@ -83,8 +84,8 @@ public class UserService {
                 .map(Enum::name)
                 .toArray(String[]::new);
 
-        return repo.findByEmail(dto.getEmail())
-                .switchIfEmpty(Mono.defer(() -> repo.insertNewUser(
+        return userRepository.findByEmail(dto.getEmail())
+                .switchIfEmpty(Mono.defer(() -> userRepository.insertNewUser(
                         UUID.randomUUID(),
                         dto.getEmail(),
                         dto.getFullName(),
@@ -125,5 +126,24 @@ public class UserService {
                 .tenantId(user.getTenantId())
                 .address(address)
                 .build();
+    }
+
+    @Transactional
+    public Mono<Void> upgradeToMerchant(UUID id, UUID tenantId) {
+        return userRepository.findById(id)
+                .flatMap(user -> {
+                    if (user.getRoles().contains(UserRoles.MERCHANT)) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is already a merchant"));
+                    }
+                    List<UserRoles> updatedRoles = new ArrayList<>(user.getRoles());
+                    updatedRoles.add(UserRoles.MERCHANT);
+
+                    user.setRoles(updatedRoles);
+                    user.setTenantId(tenantId);
+                    user.setUpdatedAt(LocalDateTime.now());
+
+                    return userRepository.save(user);
+                })
+                .then();
     }
 }

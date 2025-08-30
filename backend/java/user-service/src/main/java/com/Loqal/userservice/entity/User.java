@@ -36,7 +36,6 @@ public class User implements Persistable<UUID> {
     @Column("profile_picture_url")
     private String profilePictureUrl;
 
-
     @Column("roles")
     private List<UserRoles> roles;
 
