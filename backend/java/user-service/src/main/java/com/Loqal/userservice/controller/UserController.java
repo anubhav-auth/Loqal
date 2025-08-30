@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
@@ -47,4 +48,12 @@ public class UserController {
         return userService.updateProfile(id, dto)
                 .map(ResponseEntity::ok);
     }
+
+    @PutMapping("/users/{id}/upgrade-merchant")
+    public Mono<ResponseEntity<Void>> upgradeToMerchant(@PathVariable UUID id, @RequestParam UUID tenantId) {
+        return userService.upgradeToMerchant(id, tenantId)
+                .then(Mono.fromCallable(() -> ResponseEntity.ok().<Void>build()))
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with ID: " + id)));
+    }
+
 }
