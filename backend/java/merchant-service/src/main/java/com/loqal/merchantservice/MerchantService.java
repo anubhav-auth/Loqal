@@ -1,14 +1,19 @@
 package com.loqal.merchantservice;
 
-import com.loqal.merchantservice.dto.*;
+import com.loqal.merchantservice.dto.AnalyticsDto;
+import com.loqal.merchantservice.dto.MerchantExtendedDto;
+import com.loqal.merchantservice.dto.ProductDto;
+import com.loqal.merchantservice.dto.UpdateStockRequestDto;
 import com.loqal.merchantservice.entity.MerchantExtended;
 import com.loqal.merchantservice.entity.Order;
 import com.loqal.merchantservice.repository.MerchantExtendedRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,17 +24,20 @@ public class MerchantService {
 
     private final MerchantExtendedRepository merchantExtendedRepository;
     private final WebClient productServiceWebClient;
+    private final WebClient userSrviceWebClient;
     private final WebClient orderServiceWebClient;
 
     @Autowired
     public MerchantService(
             MerchantExtendedRepository merchantExtendedRepository,
             @Qualifier("productServiceWebClient") WebClient productServiceWebClient,
-            @Qualifier("orderServiceWebClient") WebClient orderServiceWebClient
+            @Qualifier("orderServiceWebClient") WebClient orderServiceWebClient,
+            @Qualifier("userServiceWebClient") WebClient userSrviceWebClient
     ) {
         this.merchantExtendedRepository = merchantExtendedRepository;
         this.productServiceWebClient = productServiceWebClient;
         this.orderServiceWebClient = orderServiceWebClient;
+        this.userSrviceWebClient = userSrviceWebClient;
     }
 
     public MerchantExtended getMerchantProfile(UUID merchantId) {
@@ -152,8 +160,50 @@ public class MerchantService {
 
 //    }
 
-//    TODO: Implement this method to fetch sales analytics for a merchant
+    @Transactional
+    public MerchantExtended becomeMerchant(MerchantExtendedDto merchantExtendedDto, UUID userId) {
+        MerchantExtended merchantExtended = new MerchantExtended();
+
+
+        merchantExtended.setUserId(userId);
+        merchantExtended.setName(merchantExtendedDto.name());
+        merchantExtended.setDescription(merchantExtendedDto.description());
+        merchantExtended.setAddress(merchantExtendedDto.address());
+        merchantExtended.setLogoUrl(merchantExtendedDto.logoUrl());
+
+        MerchantExtended save = merchantExtendedRepository.save(merchantExtended);
+        userSrviceWebClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/users/{userId}/upgrade-merchant")
+                        .queryParam("tenantId", merchantExtended.getId())
+                        .build(userId)
+                )
+                .retrieve()
+                .onStatus(httpStatus -> httpStatus.value() == 404,
+                        clientResponse -> Mono.error(new UserNotFoundException("User not found on remote service for ID: " + userId))
+                )
+                .onStatus(httpStatus -> httpStatus.value() == 400,
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> Mono.error(new AlreadyMerchantException(errorBody)))
+                )
+                .onStatus(HttpStatusCode::is5xxServerError,
+                        clientResponse -> clientResponse.createException().flatMap(Mono::error)
+                )
+                .bodyToMono(Void.class);
+
+        return save;
+    }
+
+    //    TODO: Implement this method to fetch sales analytics for a merchant
     public AnalyticsDto getSalesAnalyticsForMerchant(String merchantId) {
         return null;
     }
+}
+
+class UserNotFoundException extends RuntimeException {
+    public UserNotFoundException(String message) { super(message); }
+}
+
+class AlreadyMerchantException extends RuntimeException {
+    public AlreadyMerchantException(String message) { super(message); }
 }
