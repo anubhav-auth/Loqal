@@ -1,6 +1,9 @@
 spring:
   application:
     name: loqal-platform
+  sql:
+    init:
+      mode: always
   r2dbc:
     url: ${DB_URL}
     username: ${POSTGRES_USER}

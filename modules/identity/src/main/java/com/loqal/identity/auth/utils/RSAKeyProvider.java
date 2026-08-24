@@ -44,17 +44,27 @@ public class RSAKeyProvider {
                     + "(base64: PKCS#8 private, X.509 SPKI public). Tokens must survive restarts; "
                     + "ephemeral keys are no longer supported.");
         }
-        byte[] privateDer = Base64.getDecoder().decode(stripPem(privateKeyBase64));
-        byte[] publicDer = Base64.getDecoder().decode(stripPem(publicKeyBase64));
-
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(new PKCS8EncodedKeySpec(privateDer));
-        RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(new X509EncodedKeySpec(publicDer));
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(new PKCS8EncodedKeySpec(keyBytes(privateKeyBase64)));
+        RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(new X509EncodedKeySpec(keyBytes(publicKeyBase64)));
 
         this.rsaJWK = new RSAKey.Builder(publicKey)
                 .privateKey(privateKey)
                 .keyID(stableKeyId(publicKey))
                 .build();
+    }
+
+    /**
+     * Accepts either raw base64 DER or a base64-wrapped / literal PEM block.
+     */
+    private static byte[] keyBytes(String value) {
+        byte[] decoded = Base64.getDecoder().decode(stripPem(value));
+        // Detect a base64-wrapped PEM: decoded content still holds ASCII armor.
+        String asText = new String(decoded);
+        if (asText.contains("-----BEGIN")) {
+            return Base64.getMimeDecoder().decode(stripPem(asText));
+        }
+        return decoded;
     }
 
     private static boolean isBlank(String value) {

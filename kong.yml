@@ -42,9 +42,7 @@ consumers:
 # Paste the public key matching JWT_RSA_PUBLIC_KEY here (PEM format).
 jwt_secrets:
   - consumer: loqal-clients
-    key: "loqal-platform-kid"
+    key: "REPLACE_WITH_PLATFORM_KID_SEE_ENV_EXAMPLE"
     algorithm: RS256
     rsa_public_key: |
-      -----BEGIN PUBLIC KEY-----
       REPLACE_WITH_PUBLIC_KEY_PEM
-      -----END PUBLIC KEY-----
