@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: loqal-platform
+  sql:
+    init:
+      mode: always
+  r2dbc:
+    url: ${DB_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    topic:
+      order-creation-requested: ${TOPIC_ORDER_CREATION_REQUESTED:order-creation-requested}
+      stock-reservation-result: ${TOPIC_STOCK_RESERVATION_RESULT:stock-reservation-result}
+      order-cancel: ${TOPIC_ORDER_CANCEL:order-cancel}
+      order-cancel-dlt: ${TOPIC_ORDER_CANCEL_DLT:order-cancel-dlt}
+      payment-completed: ${TOPIC_PAYMENT_COMPLETED:payment-completed}
+      refund-requested: ${TOPIC_REFUND_REQUESTED:refund-requested}
+      refund-completed: ${TOPIC_REFUND_COMPLETED:refund-completed}
+
+server:
+  port: ${APP_PORT:8080}
+
+springdoc:
+  api-docs.path: /custom-docs
+  swagger-ui.path: /custom-ui.html
+
+jwt:
+  rsa:
+    private-key: ${JWT_RSA_PRIVATE_KEY}
+    public-key: ${JWT_RSA_PUBLIC_KEY}
+  refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:604800000}
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID}
+  key-secret: ${RAZORPAY_KEY_SECRET}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}

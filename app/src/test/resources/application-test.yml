@@ -1,0 +1,11 @@
+spring:
+  sql:
+    init:
+      mode: always
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+logging:
+  level:
+    com.loqal.catalog: DEBUG
+    org.springframework.kafka.listener: DEBUG
