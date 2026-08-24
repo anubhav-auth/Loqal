@@ -5,6 +5,11 @@ _format_version: "3.0"
 services:
   - name: loqal-platform
     url: http://loqal-platform:8080
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
     routes:
       - name: auth-routes
         paths:

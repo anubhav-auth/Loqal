@@ -100,26 +100,25 @@ public class OrderService {
                                 OrderItem orderItem = new OrderItem();
                                 orderItem.setProductId(product.productId());
                                 orderItem.setQuantity(quantity);
-                                // Bridge until schema migration: entity keeps major-unit double;
-                                // contract exposes minor units.
-                                orderItem.setPriceAtPurchase(product.priceMinor() / 100.0);
+                                orderItem.setPriceAtPurchaseMinor(product.priceMinor());
                                 orderItem.setOrderId(order.getId());
                                 return orderItem;
                             }).collect(Collectors.toList());
 
                     order.setItems(orderItems);
 
-                    double totalPrice = orderItems.stream()
-                            .mapToDouble(item -> item.getPriceAtPurchase() * item.getQuantity())
+                    long totalMinor = orderItems.stream()
+                            .mapToLong(item -> item.getPriceAtPurchaseMinor() * item.getQuantity())
                             .sum();
-                    order.setFinalAmount(totalPrice);
+                    order.setTotalAmountMinor(totalMinor);
+                    order.setDiscountAmountMinor(0L);
+                    order.setFinalAmountMinor(totalMinor);
 
                     return orderRepository.save(order);
                 })
                 .flatMap(savedOrder -> {
                     log.info("Order {} created. Requesting payment creation from payments module.", savedOrder.getId());
-                    long amountMinor = Math.round(savedOrder.getFinalAmount() * 100);
-                    return paymentApi.createPayment(savedOrder.getId(), savedOrder.getMerchantId(), amountMinor, "INR")
+                    return paymentApi.createPayment(savedOrder.getId(), savedOrder.getMerchantId(), savedOrder.getFinalAmountMinor(), "INR")
                             .flatMap(paymentInitiation -> {
                                 savedOrder.setRazorpayOrderId(paymentInitiation.razorpayOrderId());
                                 return orderRepository.save(savedOrder);
@@ -186,7 +185,7 @@ public class OrderService {
                         var refundEvent = new RefundRequestedEvent(
                                 order.getId(),
                                 order.getRazorpayPaymentId(),
-                                Math.round(order.getFinalAmount() * 100)
+                                order.getFinalAmountMinor()
                         );
                         sendRefundRequest(refundEvent);
                     }

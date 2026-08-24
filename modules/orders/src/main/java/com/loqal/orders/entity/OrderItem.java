@@ -11,5 +11,6 @@ public class OrderItem {
     private UUID orderId;
     private UUID productId;
     private int quantity;
-    private double priceAtPurchase;
+    /** Amount in minor units (paise) per PRD §9.2. */
+    private long priceAtPurchaseMinor;
 }

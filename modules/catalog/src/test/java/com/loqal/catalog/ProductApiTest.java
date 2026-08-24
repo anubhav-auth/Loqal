@@ -30,7 +30,7 @@ class ProductApiTest {
     void findPriceConvertsToMinorUnits() {
         Product product = new Product();
         product.setId(UUID.randomUUID());
-        product.setPrice(19.99);
+        product.setPriceMinor(1999L);
         product.setQuantity(5);
         when(productRepository.findById(product.getId())).thenReturn(Mono.just(product));
 

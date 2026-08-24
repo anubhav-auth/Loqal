@@ -20,9 +20,10 @@ public class Order {
     private UUID deliveryAgentId;
     @Transient
     private List<OrderItem> items;
-    private double totalAmount;
-    private double discountAmount;
-    private double finalAmount;
+    /** Amounts in minor units (paise) per PRD §9.2. */
+    private long totalAmountMinor;
+    private long discountAmountMinor;
+    private long finalAmountMinor;
     private String paymentStatus;
     private UUID deliveryAddressId;
     private OrderStatus currentStatus;

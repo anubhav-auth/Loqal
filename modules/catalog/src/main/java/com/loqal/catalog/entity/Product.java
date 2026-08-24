@@ -38,7 +38,8 @@ public class Product implements Persistable<UUID> {
 
     private String category_description;
 
-    private double price;
+    /** Amount in minor units (paise) per PRD §9.2. */
+    private long priceMinor;
 
     private int quantity;
 

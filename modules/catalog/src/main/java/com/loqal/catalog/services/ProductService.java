@@ -48,17 +48,13 @@ public class ProductService implements ProductApi {
     @Value("${spring.kafka.topic.stock-reservation-result}")
     private String stockReservationResultTopic;
 
-    /**
-     * Bridge until the schema migration (Phase 2a): the products table stores
-     * price as double precision; the API contract exposes integer minor units.
-     */
     @Override
     public Mono<ProductPrice> findPrice(UUID productId) {
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new ProductNotFoundException(productId)))
                 .map(product -> new ProductPrice(
                         product.getId(),
-                        Math.round(product.getPrice() * 100),
+                        product.getPriceMinor(),
                         product.getQuantity(),
                         true));
     }
@@ -170,7 +166,7 @@ public class ProductService implements ProductApi {
         newProduct.setDescription(product.description());
         newProduct.setCategory_name(product.category().getCategory_name());
         newProduct.setCategory_description(product.category().getCategory_description());
-        newProduct.setPrice(product.price());
+        newProduct.setPriceMinor(product.priceMinor());
         newProduct.setQuantity(product.quantity());
         newProduct.setImage_urls(product.image_urls());
         newProduct.setCreated_at(LocalDateTime.now());

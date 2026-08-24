@@ -38,7 +38,7 @@ public class ProductController {
                         item.getName(),
                         item.getDescription(),
                         new Category(item.getCategory_name(), item.getCategory_description()),
-                        item.getPrice(),
+                        item.getPriceMinor(),
                         item.getQuantity(),
                         item.getImage_urls()
                 ));
@@ -59,7 +59,7 @@ public class ProductController {
                         item.getName(),
                         item.getDescription(),
                         new Category(item.getCategory_name(), item.getCategory_description()),
-                        item.getPrice(),
+                        item.getPriceMinor(),
                         item.getQuantity(),
                         item.getImage_urls()
                 ))

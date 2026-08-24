@@ -64,6 +64,10 @@ class OrderSagaIT {
         registry.add("spring.r2dbc.username", POSTGRES::getUsername);
         registry.add("spring.r2dbc.password", POSTGRES::getPassword);
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        registry.add("spring.flyway.url", () -> "jdbc:postgresql://" + POSTGRES.getHost()
+                + ":" + POSTGRES.getMappedPort(5432) + "/" + POSTGRES.getDatabaseName());
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
 
         // RSA keys for the identity module (throwaway pair, generated per run)
         var keys = TestKeys.generate();
@@ -82,7 +86,7 @@ class OrderSagaIT {
         product.setId(UUID.randomUUID());
         product.markNew();
         product.setName("saga-product-" + UUID.randomUUID());
-        product.setPrice(19.99);
+        product.setPriceMinor(1999L);
         product.setQuantity(quantity);
         return productRepository.save(product).block(Duration.ofSeconds(10));
     }
@@ -96,11 +100,11 @@ class OrderSagaIT {
         order.setId(UUID.randomUUID());
         order.setCustomerId(UUID.randomUUID());
         order.setCurrentStatus(com.loqal.orders.dto.OrderStatus.ORDER_PAYMENT_COMPLETE);
-        order.setFinalAmount(19.99);
+        order.setFinalAmountMinor(1999L);
         OrderItem item = new OrderItem();
         item.setProductId(product.getId());
         item.setQuantity(2);
-        item.setPriceAtPurchase(19.99);
+        item.setPriceAtPurchaseMinor(1999L);
         item.setOrderId(order.getId());
         order.setItems(List.of(item));
         Order saved = orderRepository.save(order).block(Duration.ofSeconds(10));
@@ -133,11 +137,11 @@ class OrderSagaIT {
         order.setId(UUID.randomUUID());
         order.setCustomerId(UUID.randomUUID());
         order.setCurrentStatus(com.loqal.orders.dto.OrderStatus.ORDER_PAYMENT_COMPLETE);
-        order.setFinalAmount(39.98);
+        order.setFinalAmountMinor(3998L);
         OrderItem item = new OrderItem();
         item.setProductId(product.getId());
         item.setQuantity(5); // more than available
-        item.setPriceAtPurchase(19.99);
+        item.setPriceAtPurchaseMinor(1999L);
         item.setOrderId(order.getId());
         order.setItems(List.of(item));
         Order saved = orderRepository.save(order).block(Duration.ofSeconds(10));

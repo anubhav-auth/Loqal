@@ -1,9 +1,6 @@
 spring:
   application:
     name: loqal-platform
-  sql:
-    init:
-      mode: always
   r2dbc:
     url: ${DB_URL}
     username: ${POSTGRES_USER}
@@ -16,6 +13,11 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             redirect-uri: ${GOOGLE_REDIRECT_URI}
+  flyway:
+    url: ${FLYWAY_JDBC_URL:jdbc:postgresql://localhost:5432/loqaldb}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    locations: classpath:db/migration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     topic:
@@ -33,6 +35,10 @@ server:
 springdoc:
   api-docs.path: /custom-docs
   swagger-ui.path: /custom-ui.html
+
+logging:
+  include:
+    application.name: false
 
 jwt:
   rsa:
