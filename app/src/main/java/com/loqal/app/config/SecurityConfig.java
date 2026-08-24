@@ -28,6 +28,18 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverter
+                rolesConverter = new org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverter();
+        rolesConverter.setPrincipalClaimName("user_id");
+        rolesConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            java.util.List<String> roles = jwt.getClaimAsStringList("roles");
+            if (roles == null || roles.isEmpty()) {
+                return reactor.core.publisher.Flux.empty();
+            }
+            return reactor.core.publisher.Flux.fromIterable(roles)
+                    .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role));
+        });
+
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchange -> exchange
@@ -38,9 +50,14 @@ public class SecurityConfig {
                                 "/v3/api-docs/**", "/webjars/**").permitAll()
                         // Public storefront browsing
                         .pathMatchers(HttpMethod.GET, "/products/public/**").permitAll()
+                        // Admin-only platform management (PRD §8.3)
+                        .pathMatchers("/platform/admin/**").hasRole("ADMIN")
                         .anyExchange().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtDecoder(jwtDecoder())))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {
+                    jwt.jwtDecoder(jwtDecoder());
+                    jwt.jwtAuthenticationConverter(rolesConverter);
+                }))
                 .build();
     }
 
