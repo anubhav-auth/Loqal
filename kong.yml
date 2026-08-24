@@ -1,44 +1,38 @@
 _format_version: "3.0"
 
-# 1. Define Services (where to send traffic)
+# All traffic routes to the single loqal-platform container.
+# JWT plugin verifies RS256 tokens issued by the platform's identity module.
 services:
-  - name: auth-service
-    url: http://auth-service:8081
+  - name: loqal-platform
+    url: http://loqal-platform:8080
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
     routes:
       - name: auth-routes
         paths:
           - ~/auth
-          - /.well-known/jwks.json
+          - ~/.well-known/jwks.json
         strip_path: false
-
-  - name: user-service
-    url: http://user-service:8082
-    routes:
-      - name: user-public-routes
+      - name: users-routes
         paths:
           - ~/users
-        strip_path: false
-    plugins:
-      - name: jwt
-        config:
-          key_claim_name: kid
-
-  - name: product-service
-    url: http://product-service:8083
-    routes:
-      - name: product-public-routes
-        paths:
-          - /products 
         strip_path: false
         plugins:
           - name: jwt
             config:
               key_claim_name: kid
-
-  - name: order-service
-    url: http://order-service:8084
-    routes:
-      - name: order-public-routes
+      - name: products-routes
+        paths:
+          - ~/products
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: kid
+      - name: orders-routes
         paths:
           - /api/orders
         strip_path: false
@@ -48,24 +42,12 @@ services:
               key_claim_name: kid
 
 consumers:
-  - username: auth-service
+  - username: loqal-clients
 
-
+# Paste the public key matching JWT_RSA_PUBLIC_KEY here (PEM format).
 jwt_secrets:
-  - consumer: auth-service 
-    key: "1346311f-6f90-4c3f-90f2-ece3b72e44c5" 
+  - consumer: loqal-clients
+    key: "REPLACE_WITH_PLATFORM_KID_SEE_ENV_EXAMPLE"
     algorithm: RS256
-    rsa_public_key: | 
-      -----BEGIN PUBLIC KEY-----
-      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAti6ZgM77Oh70Wcn0QtuI
-      4onLq3X6Z5mV0/CJtQgnzauluKlry/eS2yyEmpBa92n/4D3oyfGs+Gync7rxwEPQ
-      56gPEt5jY/+PuI0LDxcR2AfVI0O8DcHfHThURBsaNz87af4v+EsQG3Q8jSIePXUN
-      y0BKhllCXdzGZgh7VKI9gOpGO49QzH5+/1+JNmn3R5T2tubjqOyRj9w/qiLDmIXi
-      vj5tTCqAcvf2yClaC3XmHmdT/3unqJHZHB82uCpz+t6sxu8O7PLWZMAMYelUUB3l
-      79Z9uG4qRoT3YkpDpBxOFqG8tUhxQQjuI9kEa2DVX9tdUdxODjzYxqJFxj90NuKR
-      EwIDAQAB
-      -----END PUBLIC KEY-----
-
-
-
-
+    rsa_public_key: |
+      REPLACE_WITH_PUBLIC_KEY_PEM
