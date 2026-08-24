@@ -1,14 +1,16 @@
 package com.loqal.catalog.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loqal.catalog.api.ProductApi;
 import com.loqal.catalog.dto.UpdateStockRequestDto;
 import com.loqal.contracts.events.OrderCancellationEvent;
+import com.loqal.contracts.events.ProductOrderRequest;
 import com.loqal.contracts.events.StockReservationRequest;
 import com.loqal.contracts.events.StockReservationResponse;
+import com.loqal.contracts.events.Topics;
 import com.loqal.catalog.entity.ProcessedEvent;
 import com.loqal.catalog.entity.Product;
 import com.loqal.catalog.entity.ProductDTO;
-import com.loqal.contracts.events.ProductOrderRequest;
 import com.loqal.catalog.exception.InsufficientStockException;
 import com.loqal.catalog.exception.ProductNotFoundException;
 import com.loqal.catalog.exception.UnauthorizedProductAccessException;
@@ -37,7 +39,14 @@ public class ProductService implements ProductApi {
 
     private final ProductRepository productRepository;
     private final ProcessedEventRepository processedEventRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+
+    @Value("${spring.kafka.topic.order-cancel}")
+    private String orderCancellationTopic;
+
+    @Value("${spring.kafka.topic.stock-reservation-result}")
+    private String stockReservationResultTopic;
 
     /**
      * Bridge until the schema migration (Phase 2a): the products table stores
@@ -54,30 +63,26 @@ public class ProductService implements ProductApi {
                         true));
     }
 
-    @Value("${spring.kafka.topic.order-cancel}")
-    private String orderCancellationTopic;
-
-    @Value("${spring.kafka.topic.stock-reservation-result}")
-    private String stockReservationResultTopic;
-
     @Transactional
-    @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = "product-service-group")
-    public void consumeOrderCreationRequest(StockReservationRequest request) {
+    @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = Topics.GROUP_CATALOG)
+    public void consumeOrderCreationRequest(String payload) {
+        StockReservationRequest request = parse(payload, StockReservationRequest.class);
+        if (request == null) return;
         Mono.defer(() -> processedEventRepository.findById(request.getOrderId())
                 .map(Optional::of)
                 .defaultIfEmpty(Optional.empty())
                 .flatMap(optionalEvent -> {
                     if (optionalEvent.isPresent()) {
-                        // Event exists: handle duplicate request
                         ProcessedEvent event = optionalEvent.get();
-                        log.warn("Duplicate request for order {}. Status: {}. Resending original result.", request.getOrderId(), event.getStatus());
+                        log.warn("Duplicate request for order {}. Status: {}. Resending original result.",
+                                request.getOrderId(), event.getStatus());
                         StockReservationResponse originalResponse = new StockReservationResponse();
                         originalResponse.setOrderId(event.getOrderId());
                         originalResponse.setStatus(event.getStatus());
                         if (event.getReason() != null) {
                             originalResponse.setReason(event.getReason());
                         }
-                        return Mono.fromFuture(kafkaTemplate.send(stockReservationResultTopic, originalResponse)).then(); // Return Mono<Void>
+                        return sendResult(originalResponse).then();
                     } else {
                         return processOrderCreation(request);
                     }
@@ -101,34 +106,35 @@ public class ProductService implements ProductApi {
                             return productRepository.save(product);
                         }))
                 .then(Mono.defer(() -> {
-                    response.setStatus("SUCCESS");
+                    response.setStatus(StockReservationResponse.STATUS_SUCCESS);
                     log.info("Stock successfully reserved for order {}", request.getOrderId());
-                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "SUCCESS", null);
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), StockReservationResponse.STATUS_SUCCESS, null);
                     return processedEventRepository.save(event);
                 }))
-                .doOnSuccess(event -> kafkaTemplate.send(stockReservationResultTopic, response))
+                .doOnSuccess(event -> sendResult(response).subscribe())
                 .onErrorResume(e -> {
                     log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
-                    response.setStatus("FAILED");
+                    response.setStatus(StockReservationResponse.STATUS_FAILED);
                     response.setReason(e.getMessage());
-                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "FAILED", e.getMessage());
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), StockReservationResponse.STATUS_FAILED, e.getMessage());
                     return processedEventRepository.save(event)
-                            .doOnSuccess(savedEvent -> kafkaTemplate.send(stockReservationResultTopic, response))
+                            .doOnSuccess(savedEvent -> sendResult(response).subscribe())
                             .then(Mono.empty());
                 })
                 .then();
     }
 
-
-    @KafkaListener(topics = "${spring.kafka.topic.order-cancel-dlt}", groupId = "product-service-dlt-group")
-    public void consumeOrderCancellationDLT(ConsumerRecord<String, Object> record) {
-        log.error("🚨 DEAD LETTER QUEUE 🚨 | Received a failed message from topic: {}", record.topic());
+    @KafkaListener(topics = "${spring.kafka.topic.order-cancel-dlt}", groupId = Topics.GROUP_CATALOG)
+    public void consumeOrderCancellationDLT(ConsumerRecord<String, String> record) {
+        log.error("DEAD LETTER QUEUE | Received a failed message from topic: {}", record.topic());
         log.error("Payload: {}", record.value());
     }
 
     @Transactional
-    @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = "product-service-group")
-    public void consumeOrderCancellation(OrderCancellationEvent request) {
+    @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = Topics.GROUP_CATALOG)
+    public void consumeOrderCancellation(String payload) {
+        OrderCancellationEvent request = parse(payload, OrderCancellationEvent.class);
+        if (request == null) return;
         processedEventRepository.findById(request.getOrderId())
                 .map(Optional::of)
                 .defaultIfEmpty(Optional.empty())
@@ -210,5 +216,24 @@ public class ProductService implements ProductApi {
             return Flux.empty();
         }
         return productRepository.findAllByNameIgnoreCase(query);
+    }
+
+    private Mono<Void> sendResult(StockReservationResponse response) {
+        try {
+            String json = objectMapper.writeValueAsString(response);
+            return Mono.fromFuture(kafkaTemplate.send(stockReservationResultTopic, json)).then();
+        } catch (Exception e) {
+            log.error("Failed to serialize stock reservation result for order {}", response.getOrderId(), e);
+            return Mono.error(e);
+        }
+    }
+
+    private <T> T parse(String payload, Class<T> type) {
+        try {
+            return objectMapper.readValue(payload, type);
+        } catch (Exception e) {
+            log.error("Failed to deserialize {} payload: {}", type.getSimpleName(), e.getMessage());
+            return null;
+        }
     }
 }

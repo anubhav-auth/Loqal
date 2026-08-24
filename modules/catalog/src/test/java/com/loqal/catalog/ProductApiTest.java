@@ -23,7 +23,7 @@ class ProductApiTest {
     @BeforeEach
     void setUp() {
         productRepository = mock(ProductRepository.class);
-        productService = new ProductService(productRepository, mock(com.loqal.catalog.repository.ProcessedEventRepository.class), mock(org.springframework.kafka.core.KafkaTemplate.class));
+        productService = new ProductService(productRepository, mock(com.loqal.catalog.repository.ProcessedEventRepository.class), mock(org.springframework.kafka.core.KafkaTemplate.class), new com.fasterxml.jackson.databind.ObjectMapper());
     }
 
     @Test

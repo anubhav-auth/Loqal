@@ -2,6 +2,7 @@ package com.loqal.orders.services;
 
 import com.loqal.payments.api.PaymentApi;
 import com.loqal.catalog.api.ProductApi;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loqal.orders.dto.OrderRequest;
 import com.loqal.orders.dto.OrderStatus;
 import com.loqal.contracts.events.ProductOrderRequest;
@@ -9,6 +10,7 @@ import com.loqal.contracts.events.OrderCancellationEvent;
 import com.loqal.orders.dto.events.OrderCreationResponse;
 import com.loqal.contracts.events.PaymentCompletedEvent;
 import com.loqal.contracts.events.RefundRequestedEvent;
+import com.loqal.contracts.events.StockReservationResponse;
 
 import com.loqal.contracts.events.Topics;
 import com.loqal.orders.entity.Order;
@@ -39,8 +41,9 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductApi productApi;
     private final PaymentApi paymentApi;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private final OutboxService outboxService;
+    private final ObjectMapper objectMapper;
 
     @Value("${spring.kafka.topic.order-cancel}")
     private String orderCancellationTopic;
@@ -49,14 +52,16 @@ public class OrderService {
             OrderRepository orderRepository,
             ProductApi productApi,
             PaymentApi paymentApi,
-            KafkaTemplate<String, Object> kafkaTemplate,
-            OutboxService outboxService
+            KafkaTemplate<String, String> kafkaTemplate,
+            OutboxService outboxService,
+            ObjectMapper objectMapper
     ) {
         this.orderRepository = orderRepository;
         this.productApi = productApi;
         this.paymentApi = paymentApi;
         this.kafkaTemplate = kafkaTemplate;
         this.outboxService = outboxService;
+        this.objectMapper = objectMapper;
     }
 
     @Value("${kafka.topic.refund-requested:refund-requested}")
@@ -124,8 +129,10 @@ public class OrderService {
     }
 
     @Transactional
-    @KafkaListener(topics = "${kafka.topic.payment-completed}", groupId = "order-service-group")
-    public void consumePaymentCompletedEvent(PaymentCompletedEvent event) {
+    @KafkaListener(topics = "${spring.kafka.topic.payment-completed}", groupId = Topics.GROUP_ORDERS)
+    public void consumePaymentCompletedEvent(String payload) {
+        PaymentCompletedEvent event = parse(payload, PaymentCompletedEvent.class);
+        if (event == null) return;
         log.info("Payment completed for order {}. Updating status and requesting stock reservation.", event.orderId());
         orderRepository.findById(event.orderId())
                 .flatMap(order -> {
@@ -147,8 +154,10 @@ public class OrderService {
     }
 
     @Transactional
-    @KafkaListener(topics = "${kafka.topic.stock-reservation-result}", groupId = "order-service-group")
-    public void consumeStockReservationResult(com.loqal.contracts.events.StockReservationResponse response) {
+    @KafkaListener(topics = "${spring.kafka.topic.stock-reservation-result}", groupId = Topics.GROUP_ORDERS)
+    public void consumeStockReservationResult(String payload) {
+        com.loqal.contracts.events.StockReservationResponse response = parse(payload, StockReservationResponse.class);
+        if (response == null) return;
         log.info("Received stock reservation result for order {}: {}", response.getOrderId(), response.getStatus());
 
         orderRepository.findById(response.getOrderId())
@@ -181,7 +190,7 @@ public class OrderService {
                                 order.getRazorpayPaymentId(),
                                 Math.round(order.getFinalAmount() * 100)
                         );
-                        kafkaTemplate.send(refundRequestedTopic, refundEvent);
+                        sendRefundRequest(refundEvent);
                     }
                     order.setUpdatedAt(LocalDateTime.now());
                     return orderRepository.save(order);
@@ -234,5 +243,22 @@ public class OrderService {
 
     public Flux<Order> getOrdersByMerchantId(UUID merchantId) {
         return orderRepository.findAllByMerchantId(merchantId);
+    }
+
+    private void sendRefundRequest(RefundRequestedEvent refundEvent) {
+        try {
+            kafkaTemplate.send(refundRequestedTopic, objectMapper.writeValueAsString(refundEvent));
+        } catch (Exception e) {
+            log.error("Failed to serialize refund request for order {}", refundEvent.orderId(), e);
+        }
+    }
+
+    private <T> T parse(String payload, Class<T> type) {
+        try {
+            return objectMapper.readValue(payload, type);
+        } catch (Exception e) {
+            log.error("Failed to deserialize {} payload: {}", type.getSimpleName(), e.getMessage());
+            return null;
+        }
     }
 }
