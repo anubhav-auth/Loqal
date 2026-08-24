@@ -20,6 +20,16 @@
             <artifactId>shared-contracts</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.loqal</groupId>
+            <artifactId>catalog-module</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.loqal</groupId>
+            <artifactId>payments-module</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>

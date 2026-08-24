@@ -7,6 +7,6 @@ import java.util.UUID;
  */
 public record RefundRequestedEvent(
         UUID orderId,
-        UUID razorpayPaymentId,
+        String razorpayPaymentId,
         long amountMinor
 ) {}
