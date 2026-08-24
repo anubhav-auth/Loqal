@@ -17,26 +17,30 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * Real-time chat over WebSocket (PRD §8.4).
- *
- * Protocol (JSON text frames):
- *   client -> {"roomId":"order:{id}","senderId":"uuid","senderRole":"CUSTOMER","content":"hi"}
- *   server <- same shape, echoed to every session in the room after persistence.
- *
- * Presence is in-memory per instance; multi-instance fan-out goes through
- * Kafka in Phase 3.
- */
 @Component
 @Slf4j
 public class ChatWebSocketHandler implements WebSocketHandler {
 
     private final ChatService chatService;
+    private final ChatFanOutPublisher fanOutPublisher;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Map<String, List<WebSocketSession>> rooms = new ConcurrentHashMap<>();
+    private final Map<String, List<RegisteredSession>> rooms = new ConcurrentHashMap<>();
 
-    public ChatWebSocketHandler(ChatService chatService) {
+    public ChatWebSocketHandler(ChatService chatService, ChatFanOutPublisher fanOutPublisher) {
         this.chatService = chatService;
+        this.fanOutPublisher = fanOutPublisher;
+    }
+
+    private record RegisteredSession(WebSocketSession session, Sinks.Many<String> sink) {}
+
+    /** Called by the Kafka consumer for every frame on any instance. */
+    public void broadcast(String roomId, String frame) {
+        List<RegisteredSession> sessions = rooms.get(roomId);
+        if (sessions == null) return;
+        sessions.removeIf(rs -> !rs.session().isOpen());
+        for (RegisteredSession rs : sessions) {
+            rs.sink().tryEmitNext(frame);
+        }
     }
 
     @Override
@@ -67,23 +71,17 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             if (roomId == null || roomId.isBlank()) {
                 return Mono.empty();
             }
-            List<WebSocketSession> sessions = rooms.computeIfAbsent(roomId,
+            List<RegisteredSession> sessions = rooms.computeIfAbsent(roomId,
                     k -> new CopyOnWriteArrayList<>());
-            if (!sessions.contains(session)) {
-                sessions.add(session);
+            RegisteredSession registered = new RegisteredSession(session, outbound);
+            if (!sessions.contains(registered)) {
+                sessions.add(registered);
                 // keep the room list from growing unbounded across reconnects
-                sessions.removeIf(s -> !s.isOpen());
+                sessions.removeIf(rs -> !rs.session().isOpen());
             }
 
             return chatService.save(null, roomId, senderId, senderRole, content)
-                    .doOnNext(saved -> {
-                        String frame = toJson(saved);
-                        for (WebSocketSession s : sessions) {
-                            if (s.isOpen()) {
-                                outbound.tryEmitNext(frame);
-                            }
-                        }
-                    })
+                    .doOnNext(fanOutPublisher::publish)
                     .then();
         } catch (Exception e) {
             log.warn("Malformed chat frame: {}", e.getMessage());

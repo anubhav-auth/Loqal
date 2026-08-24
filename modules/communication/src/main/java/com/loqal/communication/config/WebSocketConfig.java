@@ -1,5 +1,6 @@
 package com.loqal.communication.config;
 
+import com.loqal.communication.chat.ChatFanOutPublisher;
 import com.loqal.communication.chat.ChatService;
 import com.loqal.communication.chat.ChatWebSocketHandler;
 import org.springframework.context.annotation.Bean;
@@ -14,9 +15,10 @@ import java.util.Map;
 public class WebSocketConfig {
 
     @Bean
-    public HandlerMapping chatWebSocketMapping(ChatService chatService) {
+    public HandlerMapping chatWebSocketMapping(ChatService chatService, ChatFanOutPublisher fanOutPublisher) {
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
-        Map<String, WebSocketHandler> routes = Map.of("/communication/chat/ws", new ChatWebSocketHandler(chatService));
+        Map<String, WebSocketHandler> routes =
+                Map.of("/communication/chat/ws", new ChatWebSocketHandler(chatService, fanOutPublisher));
         mapping.setUrlMap(routes);
         mapping.setOrder(-1);
         return mapping;

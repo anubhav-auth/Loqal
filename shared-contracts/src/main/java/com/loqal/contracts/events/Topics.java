@@ -14,6 +14,7 @@ public final class Topics {
     public static final String PAYMENT_COMPLETED = "payment-completed";
     public static final String REFUND_REQUESTED = "refund-requested";
     public static final String REFUND_COMPLETED = "refund-completed";
+    public static final String CHAT_MESSAGES = "chat-messages";
 
     /** Consumer group shared by modules of the monolith that coordinate the saga. */
     public static final String GROUP_ORDERS = "order-service-group";
