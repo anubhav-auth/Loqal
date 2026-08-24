@@ -1,9 +1,10 @@
-package com.Loqal.userservice.services;
+package com.loqal.identity.users.services;
 
-import com.Loqal.userservice.entity.Address;
-import com.Loqal.userservice.entity.User;
-import com.Loqal.userservice.entity.dto.*;
-import com.Loqal.userservice.repository.UserRepository;
+import com.loqal.identity.users.api.UsersApi;
+import com.loqal.identity.users.entity.Address;
+import com.loqal.identity.users.entity.User;
+import com.loqal.identity.users.entity.dto.*;
+import com.loqal.identity.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,19 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserService implements UsersApi {
 
     private final UserRepository userRepository;
+
+    @Override
+    public Mono<UserInfoDto> findAuthSnapshotByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .map(user -> UserInfoDto.builder()
+                        .userId(user.getId())
+                        .roles(user.getRoles())
+                        .tenantId(user.getTenantId())
+                        .build());
+    }
 
     public Mono<UserProfileDto> getProfile(UUID id) {
         return userRepository.findById(id)

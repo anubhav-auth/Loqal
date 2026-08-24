@@ -1,6 +1,6 @@
-package com.Loqal.userservice.entity;
+package com.loqal.identity.users.entity;
 
-import com.Loqal.userservice.entity.dto.UserRoles;
+import com.loqal.identity.users.entity.dto.UserRoles;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

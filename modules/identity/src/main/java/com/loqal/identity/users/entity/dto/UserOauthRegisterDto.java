@@ -1,6 +1,6 @@
-package com.Loqal.userservice.entity.dto;
+package com.loqal.identity.users.entity.dto;
 
-import com.Loqal.userservice.entity.Address;
+import com.loqal.identity.users.entity.Address;
 import lombok.*;
 
 import java.util.UUID;

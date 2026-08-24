@@ -1,10 +1,10 @@
-package com.Loqal.userservice.entity.dto;
+package com.loqal.identity.users.entity.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.Loqal.userservice.entity.Address;
+import com.loqal.identity.users.entity.Address;
 import java.util.UUID;
 
 @Data

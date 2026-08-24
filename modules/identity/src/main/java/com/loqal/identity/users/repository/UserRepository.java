@@ -1,7 +1,7 @@
-package com.Loqal.userservice.repository;
+package com.loqal.identity.users.repository;
 
-import com.Loqal.userservice.entity.User;
-import com.Loqal.userservice.entity.dto.UserRoles;
+import com.loqal.identity.users.entity.User;
+import com.loqal.identity.users.entity.dto.UserRoles;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Mono;

@@ -1,4 +1,4 @@
-package com.Loqal.userservice.entity.dto;
+package com.loqal.identity.users.entity.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

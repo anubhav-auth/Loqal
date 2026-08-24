@@ -1,10 +1,10 @@
-package com.Loqal.userservice.controller;
+package com.loqal.identity.users.controller;
 
-import com.Loqal.userservice.entity.dto.UserInfoDto;
-import com.Loqal.userservice.entity.dto.UserOauthRegisterDto;
-import com.Loqal.userservice.entity.dto.UserProfileDto;
-import com.Loqal.userservice.entity.dto.UserRegisterDto;
-import com.Loqal.userservice.services.UserService;
+import com.loqal.identity.users.entity.dto.UserInfoDto;
+import com.loqal.identity.users.entity.dto.UserOauthRegisterDto;
+import com.loqal.identity.users.entity.dto.UserProfileDto;
+import com.loqal.identity.users.entity.dto.UserRegisterDto;
+import com.loqal.identity.users.services.UserService;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
