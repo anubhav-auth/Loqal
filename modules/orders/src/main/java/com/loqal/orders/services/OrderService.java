@@ -1,5 +1,6 @@
 package com.loqal.orders.services;
 
+import com.loqal.catalog.promotions.PromotionApi;
 import com.loqal.payments.api.PaymentApi;
 import com.loqal.catalog.api.ProductApi;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,6 +42,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductApi productApi;
     private final PaymentApi paymentApi;
+    private final PromotionApi promotionApi;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final OutboxService outboxService;
     private final ObjectMapper objectMapper;
@@ -52,6 +54,7 @@ public class OrderService {
             OrderRepository orderRepository,
             ProductApi productApi,
             PaymentApi paymentApi,
+            PromotionApi promotionApi,
             KafkaTemplate<String, String> kafkaTemplate,
             OutboxService outboxService,
             ObjectMapper objectMapper
@@ -59,6 +62,7 @@ public class OrderService {
         this.orderRepository = orderRepository;
         this.productApi = productApi;
         this.paymentApi = paymentApi;
+        this.promotionApi = promotionApi;
         this.kafkaTemplate = kafkaTemplate;
         this.outboxService = outboxService;
         this.objectMapper = objectMapper;
@@ -114,7 +118,14 @@ public class OrderService {
                     order.setDiscountAmountMinor(0L);
                     order.setFinalAmountMinor(totalMinor);
 
-                    return orderRepository.save(order);
+                    return orderRepository.save(order)
+                            .flatMap(persisted -> applyCoupon(req, userId, persisted, totalMinor)
+                                    .defaultIfEmpty(0L)
+                                    .flatMap(discountMinor -> {
+                                        persisted.setDiscountAmountMinor(discountMinor);
+                                        persisted.setFinalAmountMinor(totalMinor - discountMinor);
+                                        return orderRepository.save(persisted);
+                                    }));
                 })
                 .flatMap(savedOrder -> {
                     log.info("Order {} created. Requesting payment creation from payments module.", savedOrder.getId());
@@ -125,6 +136,23 @@ public class OrderService {
                             })
                             .map(finalOrder -> new OrderCreationResponse(finalOrder.getId(), finalOrder.getRazorpayOrderId()));
                 });
+    }
+
+    /**
+     * Server-computed discount (PRD §8.1): client-supplied amounts are ignored.
+     * A failed coupon validation aborts order creation with 422.
+     */
+    private Mono<Long> applyCoupon(OrderRequest req, UUID userId, Order persistedOrder, long subtotalMinor) {
+        if (req.getCouponCode() == null || req.getCouponCode().isBlank()) {
+            return Mono.empty();
+        }
+        UUID tenantId = req.getMerchantId();
+        return promotionApi.validateCoupon(tenantId, userId, persistedOrder.getId(),
+                        req.getCouponCode(), subtotalMinor)
+                .map(PromotionApi.DiscountResult::discountMinor)
+                .doOnSuccess(d -> log.info("Applied coupon {} worth {} minor units", req.getCouponCode(), d))
+                .onErrorMap(IllegalArgumentException.class, e ->
+                        new com.loqal.contracts.exception.InvalidCouponException(e.getMessage()));
     }
 
     @KafkaListener(topics = "${spring.kafka.topic.payment-completed}", groupId = Topics.GROUP_ORDERS)
