@@ -1,6 +1,7 @@
 package com.loqal.payments.service;
 
 import com.loqal.contracts.events.PaymentCompletedEvent;
+import com.loqal.contracts.events.RefundCompletedEvent;
 import com.loqal.contracts.events.RefundRequestedEvent;
 import com.loqal.contracts.events.Topics;
 import com.loqal.payments.api.PaymentApi;
@@ -110,7 +111,13 @@ public class PaymentService implements PaymentApi {
                             refund.setStatus(Refund.STATUS_PROCESSED);
                             refund.setCreatedAt(LocalDateTime.now());
                             refund.setUpdatedAt(LocalDateTime.now());
-                            return refundRepository.save(refund);
+                            return refundRepository.save(refund)
+                                    .doOnSuccess(saved -> sendRefundCompleted(new RefundCompletedEvent(
+                                            event.orderId(),
+                                            saved.getId(),
+                                            saved.getRazorpayRefundId(),
+                                            saved.getAmountMinor(),
+                                            Refund.STATUS_PROCESSED)));
                         })
                         .doOnSuccess(refund -> log.info("Refund {} processed for order {}",
                                 refund.getRazorpayRefundId(), event.orderId()))
@@ -126,6 +133,14 @@ public class PaymentService implements PaymentApi {
             kafkaTemplate.send(Topics.PAYMENT_COMPLETED, objectMapper.writeValueAsString(event));
         } catch (Exception e) {
             log.error("Failed to serialize payment-completed event for order {}", event.orderId(), e);
+        }
+    }
+
+    private void sendRefundCompleted(RefundCompletedEvent event) {
+        try {
+            kafkaTemplate.send(Topics.REFUND_COMPLETED, objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("Failed to serialize refund-completed event for order {}", event.orderId(), e);
         }
     }
 }

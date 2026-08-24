@@ -155,6 +155,57 @@ public class OrderService {
                         new com.loqal.contracts.exception.InvalidCouponException(e.getMessage()));
     }
 
+    /**
+     * Post-confirmation return flow (PRD Phase 3): CONFIRMED/delivered orders
+     * can be returned; a refund is requested and the order settles to
+     * ORDER_RETURNED when the refund completes.
+     */
+    @Transactional
+    public Mono<Void> returnOrder(UUID orderId, UUID userId) {
+        return orderRepository.findById(orderId)
+                .switchIfEmpty(Mono.error(new RuntimeException("Order not found: " + orderId)))
+                .flatMap(order -> {
+                    if (!order.getCustomerId().equals(userId)) {
+                        return Mono.error(new SecurityException("Unauthorized: You do not own this order."));
+                    }
+                    switch (order.getCurrentStatus()) {
+                        case ORDER_CONFIRMED:
+                        case DELIVERY_ASSIGNED:
+                        case ORDER_DISPATCHED:
+                        case ORDER_DELIVERED:
+                            break;
+                        default:
+                            return Mono.error(new IllegalStateException(
+                                    "Order cannot be returned in its current state: " + order.getCurrentStatus()));
+                    }
+                    order.setCurrentStatus(OrderStatus.ORDER_CANCELLED_PENDING);
+                    order.setUpdatedAt(LocalDateTime.now());
+                    sendRefundRequest(new RefundRequestedEvent(
+                            order.getId(),
+                            order.getRazorpayPaymentId(),
+                            order.getFinalAmountMinor()));
+                    return orderRepository.save(order).then();
+                });
+    }
+
+    @KafkaListener(topics = "${spring.kafka.topic.refund-completed}", groupId = Topics.GROUP_ORDERS)
+    public void consumeRefundCompleted(String payload) {
+        com.loqal.contracts.events.RefundCompletedEvent event =
+                parse(payload, com.loqal.contracts.events.RefundCompletedEvent.class);
+        if (event == null) return;
+        log.info("Refund {} for order {}: {}", event.refundId(), event.orderId(), event.status());
+        orderRepository.findById(event.orderId())
+                .filter(o -> OrderStatus.ORDER_CANCELLED_PENDING.equals(o.getCurrentStatus()))
+                .flatMap(order -> {
+                    order.setCurrentStatus("PROCESSED".equals(event.status())
+                            ? OrderStatus.ORDER_RETURNED
+                            : OrderStatus.ORDER_REJECTED);
+                    order.setUpdatedAt(LocalDateTime.now());
+                    return orderRepository.save(order).then();
+                })
+                .subscribe();
+    }
+
     @KafkaListener(topics = "${spring.kafka.topic.payment-completed}", groupId = Topics.GROUP_ORDERS)
     public void consumePaymentCompletedEvent(String payload) {
         PaymentCompletedEvent event = parse(payload, PaymentCompletedEvent.class);

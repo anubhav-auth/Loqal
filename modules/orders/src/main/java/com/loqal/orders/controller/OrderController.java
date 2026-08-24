@@ -98,6 +98,20 @@ public class OrderController {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/{orderId}/return")
+    public Mono<ResponseEntity<Void>> returnOrder(@PathVariable UUID orderId,
+                                                  @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
+        return orderService.returnOrder(orderId, userId)
+                .then(Mono.just(ResponseEntity.accepted().<Void>build()))
+                .onErrorResume(SecurityException.class, e ->
+                        Mono.just(ResponseEntity.status(403).build()))
+                .onErrorResume(IllegalStateException.class, e ->
+                        Mono.just(ResponseEntity.badRequest().build()))
+                .onErrorResume(RuntimeException.class, e ->
+                        Mono.just(ResponseEntity.notFound().build()));
+    }
+
     @DeleteMapping("/{orderId}/cancellation")
     public Mono<ResponseEntity<Void>> cancelOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaimAsString("user_id"));
