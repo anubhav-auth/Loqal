@@ -46,7 +46,10 @@ jwt:
     public-key: ${JWT_RSA_PUBLIC_KEY}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:604800000}
 
+payments:
+  provider: ${PAYMENTS_PROVIDER:razorpay}
+
 razorpay:
-  key-id: ${RAZORPAY_KEY_ID}
-  key-secret: ${RAZORPAY_KEY_SECRET}
-  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+  key-id: ${RAZORPAY_KEY_ID:}
+  key-secret: ${RAZORPAY_KEY_SECRET:}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}

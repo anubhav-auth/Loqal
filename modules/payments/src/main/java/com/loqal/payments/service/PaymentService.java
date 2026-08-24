@@ -7,7 +7,7 @@ import com.loqal.contracts.events.Topics;
 import com.loqal.payments.api.PaymentApi;
 import com.loqal.payments.entity.Payment;
 import com.loqal.payments.entity.Refund;
-import com.loqal.payments.gateway.RazorpayGateway;
+import com.loqal.payments.gateway.PaymentProvider;
 import com.loqal.payments.repository.PaymentRepository;
 import com.loqal.payments.repository.RefundRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class PaymentService implements PaymentApi {
     private final PaymentRepository paymentRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final RefundRepository refundRepository;
-    private final RazorpayGateway razorpayGateway;
+    private final PaymentProvider paymentProvider;
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     @Override
@@ -45,7 +45,7 @@ public class PaymentService implements PaymentApi {
                     payment.setUpdatedAt(LocalDateTime.now());
                     return paymentRepository.save(payment);
                 })
-                .flatMap(payment -> razorpayGateway.createOrder(receipt, amountMinor, currency)
+                .flatMap(payment -> paymentProvider.createOrder(receipt, amountMinor, currency)
                         .flatMap(razorpayOrderId -> {
                             payment.setRazorpayOrderId(razorpayOrderId);
                             payment.setUpdatedAt(LocalDateTime.now());
@@ -100,7 +100,7 @@ public class PaymentService implements PaymentApi {
                     log.warn("No local payment found for provider id {}. Cannot refund.", event.razorpayPaymentId());
                     return Mono.empty();
                 }))
-                .flatMap(payment -> razorpayGateway.refund(payment.getRazorpayPaymentId(), event.amountMinor())
+                .flatMap(payment -> paymentProvider.refund(payment.getRazorpayPaymentId(), event.amountMinor())
                         .flatMap(razorpayRefundId -> {
                             Refund refund = new Refund();
                             refund.setId(UUID.randomUUID());
