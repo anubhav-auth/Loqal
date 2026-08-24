@@ -86,13 +86,17 @@ public class DeliveryService {
     }
 
     /**
-     * Auto-dispatch: nearest AVAILABLE agent. Order destination coordinates are
-     * not modeled yet (Phase 3), so agents are picked by lowest agent id for a
-     * deterministic assignment until geofencing lands.
+     * Auto-dispatch with geofencing (PRD §8.2): picks the AVAILABLE agent
+     * nearest to the given destination coordinates (haversine). Agents without
+     * a known location sort last; falls back to deterministic ordering when
+     * no coordinates are supplied.
      */
-    public Mono<Delivery> autoAssign(UUID tenantId, UUID orderId) {
+    public Mono<Delivery> autoAssign(UUID tenantId, UUID orderId, Double lat, Double lng) {
+        Comparator<Agent> byDistance = (lat != null && lng != null)
+                ? Comparator.comparing(a -> a.distanceKmTo(lat, lng))
+                : Comparator.comparing(Agent::getId);
         Mono<UUID> nearestAgentId = agentRepository.findAllByTenantIdAndStatus(tenantId, Agent.AVAILABLE)
-                .sort(Comparator.comparing(Agent::getId))
+                .sort(byDistance)
                 .take(1)
                 .map(Agent::getId)
                 .singleOrEmpty()

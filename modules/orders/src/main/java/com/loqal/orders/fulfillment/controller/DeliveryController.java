@@ -93,11 +93,15 @@ public class DeliveryController {
                         Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).build()));
     }
 
+    public record AutoAssignRequest(Double lat, Double lng) {}
+
     @PostMapping("/orders/{orderId}/auto-assign")
     public Mono<ResponseEntity<Delivery>> assignAuto(@PathVariable UUID orderId,
+                                                     @RequestBody(required = false) AutoAssignRequest req,
                                                      @AuthenticationPrincipal Jwt jwt) {
         UUID tenantId = UUID.fromString(jwt.getClaimAsString("tenant_id"));
-        return deliveryService.autoAssign(tenantId, orderId)
+        return deliveryService.autoAssign(tenantId, orderId,
+                req == null ? null : req.lat(), req == null ? null : req.lng())
                 .map(d -> ResponseEntity.status(HttpStatus.CREATED).body(redact(d)))
                 .onErrorResume(ProductNotFoundException.class,
                         e -> Mono.just(ResponseEntity.notFound().build()))

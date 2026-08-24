@@ -127,6 +127,31 @@ class DeliveryServiceTest {
     }
 
     @Test
+    void geofencedAutoAssignPicksNearestAgent() {
+        Agent near = new Agent();
+        near.setId(UUID.randomUUID());
+        near.setTenantId(tenantId);
+        near.setStatus(Agent.AVAILABLE);
+        near.setCurrentLat(12.97);
+        near.setCurrentLng(77.59); // Bengaluru
+
+        Agent far = new Agent();
+        far.setId(UUID.randomUUID());
+        far.setTenantId(tenantId);
+        far.setStatus(Agent.AVAILABLE);
+        far.setCurrentLat(28.61);
+        far.setCurrentLng(77.20); // Delhi
+
+        when(agentRepository.findAllByTenantIdAndStatus(tenantId, Agent.AVAILABLE))
+                .thenReturn(Flux.just(far, near));
+        when(agentRepository.findById(near.getId())).thenReturn(Mono.just(near));
+
+        StepVerifier.create(service.autoAssign(tenantId, orderId, 12.98, 77.60))
+                .assertNext(delivery -> assertEquals(near.getId(), delivery.getAgentId()))
+                .verifyComplete();
+    }
+
+    @Test
     void clockOutWithActiveDeliveryRejected() {
         Agent busy = new Agent();
         busy.setId(UUID.randomUUID());
