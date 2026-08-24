@@ -1,12 +1,13 @@
 package com.loqal.payments.service;
 
 import com.loqal.contracts.events.PaymentCompletedEvent;
+import com.loqal.contracts.events.RefundCompletedEvent;
 import com.loqal.contracts.events.RefundRequestedEvent;
 import com.loqal.contracts.events.Topics;
 import com.loqal.payments.api.PaymentApi;
 import com.loqal.payments.entity.Payment;
 import com.loqal.payments.entity.Refund;
-import com.loqal.payments.gateway.RazorpayGateway;
+import com.loqal.payments.gateway.PaymentProvider;
 import com.loqal.payments.repository.PaymentRepository;
 import com.loqal.payments.repository.RefundRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class PaymentService implements PaymentApi {
     private final PaymentRepository paymentRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final RefundRepository refundRepository;
-    private final RazorpayGateway razorpayGateway;
+    private final PaymentProvider paymentProvider;
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     @Override
@@ -44,7 +45,7 @@ public class PaymentService implements PaymentApi {
                     payment.setUpdatedAt(LocalDateTime.now());
                     return paymentRepository.save(payment);
                 })
-                .flatMap(payment -> razorpayGateway.createOrder(receipt, amountMinor, currency)
+                .flatMap(payment -> paymentProvider.createOrder(receipt, amountMinor, currency)
                         .flatMap(razorpayOrderId -> {
                             payment.setRazorpayOrderId(razorpayOrderId);
                             payment.setUpdatedAt(LocalDateTime.now());
@@ -99,7 +100,7 @@ public class PaymentService implements PaymentApi {
                     log.warn("No local payment found for provider id {}. Cannot refund.", event.razorpayPaymentId());
                     return Mono.empty();
                 }))
-                .flatMap(payment -> razorpayGateway.refund(payment.getRazorpayPaymentId(), event.amountMinor())
+                .flatMap(payment -> paymentProvider.refund(payment.getRazorpayPaymentId(), event.amountMinor())
                         .flatMap(razorpayRefundId -> {
                             Refund refund = new Refund();
                             refund.setId(UUID.randomUUID());
@@ -110,7 +111,13 @@ public class PaymentService implements PaymentApi {
                             refund.setStatus(Refund.STATUS_PROCESSED);
                             refund.setCreatedAt(LocalDateTime.now());
                             refund.setUpdatedAt(LocalDateTime.now());
-                            return refundRepository.save(refund);
+                            return refundRepository.save(refund)
+                                    .doOnSuccess(saved -> sendRefundCompleted(new RefundCompletedEvent(
+                                            event.orderId(),
+                                            saved.getId(),
+                                            saved.getRazorpayRefundId(),
+                                            saved.getAmountMinor(),
+                                            Refund.STATUS_PROCESSED)));
                         })
                         .doOnSuccess(refund -> log.info("Refund {} processed for order {}",
                                 refund.getRazorpayRefundId(), event.orderId()))
@@ -126,6 +133,14 @@ public class PaymentService implements PaymentApi {
             kafkaTemplate.send(Topics.PAYMENT_COMPLETED, objectMapper.writeValueAsString(event));
         } catch (Exception e) {
             log.error("Failed to serialize payment-completed event for order {}", event.orderId(), e);
+        }
+    }
+
+    private void sendRefundCompleted(RefundCompletedEvent event) {
+        try {
+            kafkaTemplate.send(Topics.REFUND_COMPLETED, objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("Failed to serialize refund-completed event for order {}", event.orderId(), e);
         }
     }
 }

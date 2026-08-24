@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loqal-config
+  namespace: loqal
+data:
+  APP_PORT: "8080"
+  FLYWAY_JDBC_URL: "jdbc:postgresql://postgres.loqal.svc.cluster.local:5432/loqaldb"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-bootstrap.loqal.svc.cluster.local:9092"
+  REDIS_HOST: "redis-master.loqal.svc.cluster.local"
+  REDIS_PORT: "6379"
+  GOOGLE_REDIRECT_URI: "https://api.example.com/auth/google/callback"
+  PAYMENTS_PROVIDER: "razorpay"
+  REFRESH_TOKEN_EXPIRATION: "604800000"

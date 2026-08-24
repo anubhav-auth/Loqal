@@ -1,6 +1,6 @@
 package com.loqal.payments.controller;
 
-import com.loqal.payments.gateway.RazorpayGateway;
+import com.loqal.payments.gateway.PaymentProvider;
 import com.loqal.payments.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class PaymentController {
 
-    private final RazorpayGateway razorpayGateway;
+    private final PaymentProvider paymentProvider;
     private final PaymentService paymentService;
 
     @PostMapping("/api/payments/webhook")
@@ -25,7 +25,7 @@ public class PaymentController {
             @RequestBody String payload,
             @RequestHeader(value = "X-Razorpay-Signature", required = false) String signature) {
 
-        if (!razorpayGateway.verifyWebhookSignature(payload, signature)) {
+        if (!paymentProvider.verifyWebhookSignature(payload, signature)) {
             log.warn("Rejected Razorpay webhook with invalid signature");
             return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
         }

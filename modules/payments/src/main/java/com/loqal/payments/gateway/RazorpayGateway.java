@@ -21,7 +21,12 @@ import java.util.concurrent.Executors;
  */
 @Component
 @Slf4j
-public class RazorpayGateway {
+public class RazorpayGateway implements PaymentProvider {
+
+    @Override
+    public String name() {
+        return "razorpay";
+    }
 
     private static final Duration CALL_TIMEOUT = Duration.ofSeconds(15);
 
@@ -32,9 +37,9 @@ public class RazorpayGateway {
     private final String keySecret;
     private final String webhookSecret;
 
-    public RazorpayGateway(@Value("${razorpay.key-id}") String keyId,
-                           @Value("${razorpay.key-secret}") String keySecret,
-                           @Value("${razorpay.webhook-secret}") String webhookSecret) {
+    public RazorpayGateway(@Value("${razorpay.key-id:}") String keyId,
+                           @Value("${razorpay.key-secret:}") String keySecret,
+                           @Value("${razorpay.webhook-secret:}") String webhookSecret) {
         this.keyId = keyId;
         this.keySecret = keySecret;
         this.webhookSecret = webhookSecret;
