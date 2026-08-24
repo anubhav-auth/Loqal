@@ -128,7 +128,6 @@ public class OrderService {
                 });
     }
 
-    @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.payment-completed}", groupId = Topics.GROUP_ORDERS)
     public void consumePaymentCompletedEvent(String payload) {
         PaymentCompletedEvent event = parse(payload, PaymentCompletedEvent.class);
@@ -153,7 +152,6 @@ public class OrderService {
                 }).subscribe();
     }
 
-    @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.stock-reservation-result}", groupId = Topics.GROUP_ORDERS)
     public void consumeStockReservationResult(String payload) {
         com.loqal.contracts.events.StockReservationResponse response = parse(payload, StockReservationResponse.class);

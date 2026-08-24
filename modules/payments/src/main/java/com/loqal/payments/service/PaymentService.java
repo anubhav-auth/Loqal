@@ -24,9 +24,10 @@ import java.util.UUID;
 public class PaymentService implements PaymentApi {
 
     private final PaymentRepository paymentRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final RefundRepository refundRepository;
     private final RazorpayGateway razorpayGateway;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
     @Override
     public Mono<PaymentInitiation> createPayment(UUID orderId, UUID tenantId, long amountMinor, String currency) {
@@ -76,13 +77,12 @@ public class PaymentService implements PaymentApi {
                             payment.setStatus(Payment.STATUS_CAPTURED);
                             payment.setUpdatedAt(LocalDateTime.now());
                             return paymentRepository.save(payment)
-                                    .doOnSuccess(saved -> kafkaTemplate.send(Topics.PAYMENT_COMPLETED,
-                                            new PaymentCompletedEvent(
-                                                    saved.getOrderId(),
-                                                    saved.getRazorpayOrderId(),
-                                                    saved.getRazorpayPaymentId(),
-                                                    "SUCCESS",
-                                                    LocalDateTime.now())))
+                                    .doOnSuccess(saved -> sendCompleted(new PaymentCompletedEvent(
+                                            saved.getOrderId(),
+                                            saved.getRazorpayOrderId(),
+                                            saved.getRazorpayPaymentId(),
+                                            "SUCCESS",
+                                            LocalDateTime.now())))
                                     .then();
                         }))
                 .onErrorMap(IllegalStateException.class, e -> e)
@@ -119,5 +119,13 @@ public class PaymentService implements PaymentApi {
                             return Mono.empty();
                         }))
                 .then();
+    }
+
+    private void sendCompleted(PaymentCompletedEvent event) {
+        try {
+            kafkaTemplate.send(Topics.PAYMENT_COMPLETED, objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("Failed to serialize payment-completed event for order {}", event.orderId(), e);
+        }
     }
 }

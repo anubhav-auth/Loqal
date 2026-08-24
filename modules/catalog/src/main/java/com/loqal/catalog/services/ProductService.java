@@ -11,7 +11,7 @@ import com.loqal.contracts.events.Topics;
 import com.loqal.catalog.entity.ProcessedEvent;
 import com.loqal.catalog.entity.Product;
 import com.loqal.catalog.entity.ProductDTO;
-import com.loqal.catalog.exception.InsufficientStockException;
+import com.loqal.contracts.exception.InsufficientStockException;
 import com.loqal.catalog.exception.ProductNotFoundException;
 import com.loqal.catalog.exception.UnauthorizedProductAccessException;
 import com.loqal.catalog.repository.ProcessedEventRepository;
@@ -63,7 +63,6 @@ public class ProductService implements ProductApi {
                         true));
     }
 
-    @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-creation-requested}", groupId = Topics.GROUP_CATALOG)
     public void consumeOrderCreationRequest(String payload) {
         StockReservationRequest request = parse(payload, StockReservationRequest.class);
@@ -108,7 +107,7 @@ public class ProductService implements ProductApi {
                 .then(Mono.defer(() -> {
                     response.setStatus(StockReservationResponse.STATUS_SUCCESS);
                     log.info("Stock successfully reserved for order {}", request.getOrderId());
-                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), StockReservationResponse.STATUS_SUCCESS, null);
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), StockReservationResponse.STATUS_SUCCESS, null, true);
                     return processedEventRepository.save(event);
                 }))
                 .doOnSuccess(event -> sendResult(response).subscribe())
@@ -116,7 +115,7 @@ public class ProductService implements ProductApi {
                     log.error("Stock reservation failed for order {}: {}", request.getOrderId(), e.getMessage());
                     response.setStatus(StockReservationResponse.STATUS_FAILED);
                     response.setReason(e.getMessage());
-                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), StockReservationResponse.STATUS_FAILED, e.getMessage());
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), StockReservationResponse.STATUS_FAILED, e.getMessage(), true);
                     return processedEventRepository.save(event)
                             .doOnSuccess(savedEvent -> sendResult(response).subscribe())
                             .then(Mono.empty());
@@ -130,7 +129,6 @@ public class ProductService implements ProductApi {
         log.error("Payload: {}", record.value());
     }
 
-    @Transactional
     @KafkaListener(topics = "${spring.kafka.topic.order-cancel}", groupId = Topics.GROUP_CATALOG)
     public void consumeOrderCancellation(String payload) {
         OrderCancellationEvent request = parse(payload, OrderCancellationEvent.class);
@@ -159,7 +157,7 @@ public class ProductService implements ProductApi {
                             return productRepository.save(product);
                         }))
                 .then(Mono.defer(() -> {
-                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "CANCELLED", null);
+                    ProcessedEvent event = new ProcessedEvent(request.getOrderId(), "CANCELLED", null, true);
                     return processedEventRepository.save(event);
                 }))
                 .doOnError(e -> log.error("Failed to process order cancellation event. Error: {}. This may require manual intervention.", e.getMessage()))
@@ -177,6 +175,7 @@ public class ProductService implements ProductApi {
         newProduct.setImage_urls(product.image_urls());
         newProduct.setCreated_at(LocalDateTime.now());
         newProduct.setMerchantId(merchantId);
+        newProduct.markNew();
         return productRepository.save(newProduct);
     }
 

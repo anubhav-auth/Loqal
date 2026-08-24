@@ -2,6 +2,8 @@ package com.loqal.catalog.entity;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -12,9 +14,21 @@ import java.util.UUID;
 
 @Data
 @Table(name = "products")
-public class Product {
+public class Product implements Persistable<UUID> {
     @Id
     private UUID id;
+
+    @Transient
+    private boolean newRecord = false;
+
+    @Override
+    public boolean isNew() {
+        return newRecord;
+    }
+
+    public void markNew() {
+        this.newRecord = true;
+    }
 
     private String name;
 
