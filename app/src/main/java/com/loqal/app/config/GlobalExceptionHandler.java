@@ -2,8 +2,6 @@ package com.loqal.app.config;
 
 import com.loqal.catalog.exception.ProductNotFoundException;
 import com.loqal.contracts.dto.ErrorResponse;
-import com.loqal.contracts.exception.InsufficientStockException;
-import com.loqal.contracts.exception.InvalidOrderStatusException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,13 +29,21 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, exchange);
     }
 
-    @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException ex, ServerWebExchange exchange) {
+    @ExceptionHandler(com.loqal.contracts.exception.InvalidCouponException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCoupon(com.loqal.contracts.exception.InvalidCouponException ex,
+                                                             ServerWebExchange exchange) {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), exchange);
     }
 
-    @ExceptionHandler(InvalidOrderStatusException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidStatus(InvalidOrderStatusException ex, ServerWebExchange exchange) {
+    @ExceptionHandler(com.loqal.contracts.exception.InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(com.loqal.contracts.exception.InsufficientStockException ex,
+                                                                 ServerWebExchange exchange) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), exchange);
+    }
+
+    @ExceptionHandler(com.loqal.contracts.exception.InvalidOrderStatusException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidStatus(com.loqal.contracts.exception.InvalidOrderStatusException ex,
+                                                             ServerWebExchange exchange) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), exchange);
     }
 
