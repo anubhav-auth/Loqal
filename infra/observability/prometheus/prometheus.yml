@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: loqal-platform
+    metrics_path: /actuator/prometheus
+    # Scraped through Kong so the path resolves; or point directly at
+    # loqal-platform:8080 from inside the docker network.
+    static_configs:
+      - targets: ['loqal-platform:8080']
