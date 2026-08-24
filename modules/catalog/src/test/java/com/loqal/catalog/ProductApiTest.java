@@ -44,7 +44,7 @@ class ProductApiTest {
 
     @Test
     void findPriceErrorsForUnknownProduct() {
-        when(productRepository.findById(org.mockito.ArgumentMatchers.any())).thenReturn(Mono.empty());
+        when(productRepository.findById(org.mockito.ArgumentMatchers.any(UUID.class))).thenReturn(Mono.empty());
         StepVerifier.create(productService.findPrice(UUID.randomUUID()))
                 .expectError(com.loqal.catalog.exception.ProductNotFoundException.class)
                 .verify();
