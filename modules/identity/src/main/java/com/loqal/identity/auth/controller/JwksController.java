@@ -1,6 +1,6 @@
-package com.loqal.authservice.controller;
+package com.loqal.identity.auth.controller;
 
-import com.loqal.authservice.utils.RSAKeyProvider;
+import com.loqal.identity.auth.utils.RSAKeyProvider;
 import com.nimbusds.jose.jwk.JWKSet;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

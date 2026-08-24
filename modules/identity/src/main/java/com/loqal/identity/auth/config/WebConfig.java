@@ -1,4 +1,4 @@
-package com.loqal.authservice.config;
+package com.loqal.identity.auth.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

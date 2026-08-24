@@ -1,6 +1,6 @@
-package com.loqal.authservice.service;
+package com.loqal.identity.auth.service;
 
-import com.loqal.authservice.utils.RSAKeyProvider;
+import com.loqal.identity.auth.utils.RSAKeyProvider;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;

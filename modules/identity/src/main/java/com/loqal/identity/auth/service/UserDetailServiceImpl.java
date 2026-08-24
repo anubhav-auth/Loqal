@@ -1,6 +1,6 @@
-package com.loqal.authservice.service;
+package com.loqal.identity.auth.service;
 
-import com.loqal.authservice.repository.UserCredentialRepository;
+import com.loqal.identity.auth.repository.UserCredentialRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.User;

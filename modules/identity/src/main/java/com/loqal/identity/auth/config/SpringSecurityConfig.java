@@ -1,6 +1,6 @@
-package com.loqal.authservice.config;
+package com.loqal.identity.auth.config;
 
-import com.loqal.authservice.service.UserDetailServiceImpl;
+import com.loqal.identity.auth.service.UserDetailServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

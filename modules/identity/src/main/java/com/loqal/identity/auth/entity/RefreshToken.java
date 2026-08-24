@@ -1,4 +1,4 @@
-package com.loqal.authservice.entity;
+package com.loqal.identity.auth.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

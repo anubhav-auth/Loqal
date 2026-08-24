@@ -1,14 +1,15 @@
-package com.loqal.authservice.service;
+package com.loqal.identity.auth.service;
 
-import com.loqal.authservice.entity.Address;
-import com.loqal.authservice.entity.RefreshToken;
-import com.loqal.authservice.entity.UserCredential;
-import com.loqal.authservice.entity.dto.AuthResponse;
-import com.loqal.authservice.entity.dto.LoginRequest;
-import com.loqal.authservice.entity.dto.RegisterRequest;
-import com.loqal.authservice.entity.dto.UserOauthRegisterDto;
-import com.loqal.authservice.repository.RefreshTokenRepository;
-import com.loqal.authservice.repository.UserCredentialRepository;
+import com.loqal.identity.auth.entity.RefreshToken;
+import com.loqal.identity.auth.entity.UserCredential;
+import com.loqal.identity.auth.entity.dto.AuthResponse;
+import com.loqal.identity.auth.entity.dto.LoginRequest;
+import com.loqal.identity.auth.entity.dto.RegisterRequest;
+import com.loqal.identity.users.api.UsersApi;
+import com.loqal.identity.users.entity.Address;
+import com.loqal.identity.users.entity.dto.UserOauthRegisterDto;
+import com.loqal.identity.auth.repository.RefreshTokenRepository;
+import com.loqal.identity.auth.repository.UserCredentialRepository;
 import com.nimbusds.jose.JOSEException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +45,7 @@ public class AuthService {
     private final UserCredentialRepository userCredentialRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final UserServiceClient userServiceClient;
+    private final UsersApi usersApi;
     private final WebClient webClient = WebClient.create();
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -79,11 +80,7 @@ public class AuthService {
                             .tenantId(NON_TENANT_UUID)
                             .address(Address.defaultAddress())
                             .build();
-                    try {
-                        return userServiceClient.registerOrFetchUser(dto, jwtService.generateServiceToken());
-                    } catch (JOSEException e) {
-                        return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate service token"));
-                    }
+                    return usersApi.registerOrUpdateFromOAuth(dto);
                 })
                 .then();
     }
@@ -142,26 +139,23 @@ public class AuthService {
     }
 
     private Mono<AuthResponse> generateTokensForUser(String email) {
-        try {
-            String internalServiceToken = jwtService.generateServiceToken();
-            UserOauthRegisterDto dto = UserOauthRegisterDto.builder().email(email).build();
-            return userServiceClient.registerOrFetchUser(dto, internalServiceToken)
-                    .flatMap(userInfo -> {
-                        if (userInfo == null || userInfo.userId() == null || userInfo.roles() == null) {
-                            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch user info"));
-                        }
-                        try {
-                            String accessToken = jwtService.generateAccessToken(email, userInfo.roles(), userInfo.tenantId(), userInfo.userId());
-                            String newRefreshToken = jwtService.generateRefreshToken(email, userInfo.userId());
-                            return saveRefreshToken(email, newRefreshToken)
-                                    .map(savedToken -> new AuthResponse(accessToken, newRefreshToken));
-                        } catch (JOSEException e) {
-                            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate tokens"));
-                        }
-                    });
-        } catch (JOSEException e) {
-            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate service token"));
-        }
+        UserOauthRegisterDto dto = UserOauthRegisterDto.builder().email(email).build();
+        return usersApi.registerOrUpdateFromOAuth(dto)
+                .flatMap(userInfo -> {
+                    if (userInfo == null || userInfo.getUserId() == null || userInfo.getRoles() == null) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch user info"));
+                    }
+                    try {
+                        String accessToken = jwtService.generateAccessToken(email,
+                                userInfo.getRoles().stream().map(Enum::name).toList(),
+                                userInfo.getTenantId(), userInfo.getUserId());
+                        String newRefreshToken = jwtService.generateRefreshToken(email, userInfo.getUserId());
+                        return saveRefreshToken(email, newRefreshToken)
+                                .map(savedToken -> new AuthResponse(accessToken, newRefreshToken));
+                    } catch (JOSEException e) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate tokens"));
+                    }
+                });
     }
 
     private Mono<RefreshToken> saveRefreshToken(String email, String tokenValue) {

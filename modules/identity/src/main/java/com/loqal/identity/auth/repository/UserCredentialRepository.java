@@ -1,6 +1,6 @@
-package com.loqal.authservice.repository;
+package com.loqal.identity.auth.repository;
 
-import com.loqal.authservice.entity.UserCredential;
+import com.loqal.identity.auth.entity.UserCredential;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Mono;

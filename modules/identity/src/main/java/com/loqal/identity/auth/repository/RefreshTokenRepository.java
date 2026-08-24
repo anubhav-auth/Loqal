@@ -1,6 +1,6 @@
-package com.loqal.authservice.repository;
+package com.loqal.identity.auth.repository;
 
-import com.loqal.authservice.entity.RefreshToken;
+import com.loqal.identity.auth.entity.RefreshToken;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.r2dbc.repository.Query;

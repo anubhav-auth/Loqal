@@ -1,9 +1,9 @@
-package com.loqal.authservice.controller;
+package com.loqal.identity.auth.controller;
 
-import com.loqal.authservice.entity.dto.AuthResponse;
-import com.loqal.authservice.entity.dto.LoginRequest;
-import com.loqal.authservice.entity.dto.RegisterRequest;
-import com.loqal.authservice.service.AuthService;
+import com.loqal.identity.auth.entity.dto.AuthResponse;
+import com.loqal.identity.auth.entity.dto.LoginRequest;
+import com.loqal.identity.auth.entity.dto.RegisterRequest;
+import com.loqal.identity.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

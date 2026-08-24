@@ -15,4 +15,14 @@ public class Address {
     private String state;
     private String postalCode;
     private String country;
+
+    public static Address defaultAddress() {
+        return Address.builder()
+                .street("N/A")
+                .city("N/A")
+                .state("N/A")
+                .postalCode("000000")
+                .country("N/A")
+                .build();
+    }
 }

@@ -1,4 +1,4 @@
-package com.loqal.authservice.entity.dto;
+package com.loqal.identity.auth.entity.dto;
 
 public record AuthResponse(String accessToken, String refreshToken) {
 }
