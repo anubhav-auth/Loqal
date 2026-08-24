@@ -23,6 +23,8 @@
         <module>modules/catalog</module>
         <module>modules/orders</module>
         <module>modules/payments</module>
+        <module>modules/platform</module>
+        <module>modules/communication</module>
         <module>app</module>
     </modules>
 
