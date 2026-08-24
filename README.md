@@ -48,6 +48,8 @@ Full product requirements: [`docs/PRD.md`](docs/PRD.md)
 | `modules/catalog` | `com.loqal.catalog` | Products, categories, concurrency-safe stock reservation/reversion |
 | `modules/orders` | `com.loqal.orders` | Order lifecycle saga, transactional outbox → Kafka, idempotent order creation |
 | `modules/payments` | `com.loqal.payments` | Razorpay orders (blocking SDK on virtual threads), signed webhooks, refunds |
+| `modules/platform` | `com.loqal.platform` | Merchant onboarding, storefront profiles, audit trail |
+| `modules/communication` | `com.loqal.communication` | Notification fan-out (templates, cooldown), WebSocket chat with history |
 | `app` | `com.loqal.app` | Single Spring Boot assembly: one process, one port |
 
 **Module rules** (enforced by Maven structure):
