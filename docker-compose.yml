@@ -3,11 +3,7 @@ services:
     image: kong:latest
     restart: always
     depends_on:
-      auth-service:
-        condition: service_started
-      user-service:
-        condition: service_started
-      product-service:
+      loqal-platform:
         condition: service_started
     environment:
       KONG_DATABASE: "off"
@@ -17,13 +13,44 @@ services:
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
-      KONG_LOG_LEVEL: debug
     ports:
       - "8000:8000"
       - "8443:8443"
       - "8001:8001"
     volumes:
       - ./kong.yml:/etc/kong/kong.yml
+    networks:
+      - loqal-net
+
+  loqal-platform:
+    build: .
+    container_name: loqal-platform
+    depends_on:
+      loqal-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    environment:
+      DB_URL: r2dbc:postgresql://loqal-db:5432/loqaldb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_PORT: 8080
+      JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
+      JWT_RSA_PUBLIC_KEY: ${JWT_RSA_PUBLIC_KEY}
+      REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+    expose:
+      - "8080"
     networks:
       - loqal-net
 
@@ -41,96 +68,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - loqal-net
-
-  auth-service:
-    build: ./backend/java/auth-service
-    ports:
-      - "8081:8081"
-    depends_on:
-      loqal-db:
-        condition: service_healthy
-    environment:
-      DB_URL: ${DB_URL}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
-      STATE_CHECKER_ENABLED: ${STATE_CHECKER_ENABLED}
-      ACCESS_TOKEN_EXPIRY: ${ACCESS_TOKEN_EXPIRY}
-      REFRESH_TOKEN_EXPIRY: ${REFRESH_TOKEN_EXPIRY}
-      USER_SERVICE_URL: ${USER_SERVICE_URL}
-      DDL_AUTO_SETTING: ${DDL_AUTO_SETTING}
-      ADMIN_SERVER_PORT: ${ADMIN_SERVER_PORT}
-    networks:
-      - loqal-net
-
-  user-service:
-    build: ./backend/java/user-service
-    ports:
-      - "8082:8082" ## ports are for external access only not needed for internal communication remove later
-    depends_on:
-      loqal-db:
-        condition: service_healthy
-    environment:
-      DB_URL: ${DB_URL}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      USER_SERVER_PORT: ${USER_SERVER_PORT}
-    networks:
-      - loqal-net
-
-  product-service:
-    build: ./backend/java/product-service
-    container_name: product-service
-    ports:
-      - "8083:8083"
-    depends_on:
-      loqal-db:
-        condition: service_healthy
-    environment:
-      - DB_URL=${DB_URL}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - PRODUCT_SERVER_PORT=${PRODUCT_SERVER_PORT}
-      - JWT_JWKS_URI=${JWT_JWKS_URI}
-      - DDL_AUTO_SETTING=${DDL_AUTO_SETTING}
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
-      - ORDER_CREATTION_REQUESTED=${ORDER_CREATTION_REQUESTED}
-      - STOCK_RESERVATION_RESULT=${STOCK_RESERVATION_RESULT}
-      - ORDER_CANCEL=${ORDER_CANCEL}
-      - ORDER_CANCEL_DLT=${ORDER_CANCEL_DLT}
-      - PRODUCT_SERVICE_URL=${PRODUCT_SERVICE_URL}
-      - USER_SERVICE_URL=${USER_SERVICE_URL}
-    networks:
-      - loqal-net
-    
-  order-service:
-    build: ./backend/java/order-service
-    container_name: order-service
-    ports:
-      - "8084:8084"
-    depends_on:
-      loqal-db:
-        condition: service_healthy
-    environment:
-      - DB_URL=${DB_URL}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - ORDER_SERVER_PORT=${ORDER_SERVER_PORT}
-      - JWT_JWKS_URI=${JWT_JWKS_URI}
-      - DDL_AUTO_SETTING=${DDL_AUTO_SETTING}
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
-      - ORDER_CREATTION_REQUESTED=${ORDER_CREATTION_REQUESTED}
-      - STOCK_RESERVATION_RESULT=${STOCK_RESERVATION_RESULT}
-      - ORDER_CANCEL=${ORDER_CANCEL}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - PRODUCT_SERVICE_URL=${PRODUCT_SERVICE_URL}
-      - USER_SERVICE_URL=${USER_SERVICE_URL}
     networks:
       - loqal-net
 
@@ -152,6 +89,7 @@ services:
       - "2181:2181"
     networks:
       - loqal-net
+
   kafka:
     image: confluentinc/cp-kafka:latest
     container_name: kafka
