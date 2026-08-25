@@ -11,7 +11,7 @@ const ACCESS_TOKEN_KEY = "accessToken"
 const REFRESH_TOKEN_KEY = "refreshToken"
 
 const API_BASE: string =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) || "/api"
+  ((import.meta as any).env?.VITE_API_BASE as string | undefined) || "/api"
 
 export class ApiClient {
   private accessToken: string | null = null
