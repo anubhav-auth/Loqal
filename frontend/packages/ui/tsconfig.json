@@ -1,0 +1,11 @@
+{
+  "extends": "@loqal/config/tsconfig",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

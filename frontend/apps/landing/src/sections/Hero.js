@@ -1,0 +1,12 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { Button } from '@loqal/ui';
+const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+};
+export default function Hero() {
+    return (_jsxs("section", { className: "mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-28 sm:px-6 md:grid-cols-2 md:pt-36", children: [_jsxs(motion.div, { initial: "hidden", animate: "visible", variants: fadeUp, children: [_jsxs("span", { className: "inline-flex items-center gap-2 rounded-button bg-accent-light px-4 py-1.5 text-sm font-medium text-accent", children: [_jsx(Sparkles, { size: 16 }), "Commerce Reimagined"] }), _jsxs("h1", { className: "mt-6 font-display text-5xl font-semibold leading-[1.05] text-foreground sm:text-6xl lg:text-7xl", children: ["Local commerce, ", _jsx("span", { className: "italic text-accent", children: "beautifully" }), " simple."] }), _jsx("p", { className: "mt-6 max-w-md text-lg leading-relaxed text-foreground-secondary", children: "Loqal gives neighborhood merchants a polished storefront, effortless ordering, and reliable delivery \u2014 without the enterprise price tag." }), _jsxs("div", { className: "mt-8 flex flex-col gap-3 sm:flex-row", children: [_jsx(Button, { asChild: true, size: "lg", children: _jsxs(Link, { to: "/signup", children: ["Start Free", _jsx(ArrowRight, { size: 18 })] }) }), _jsx(Button, { asChild: true, size: "lg", variant: "outline", children: _jsx("a", { href: "#features", children: "See Examples" }) })] })] }), _jsxs(motion.div, { initial: { opacity: 0, scale: 0.96 }, animate: { opacity: 1, scale: 1 }, transition: { duration: 0.7, ease: 'easeOut' }, className: "relative", children: [_jsx("img", { src: "https://images.unsplash.com/photo-1488459716781-31f93360f497?w=800&q=80", alt: "Fresh local produce arranged on a market table", className: "aspect-[4/5] w-full rounded-card object-cover shadow-lg" }), _jsxs("div", { className: "absolute -bottom-6 -left-4 hidden rounded-card bg-surface p-4 shadow-md sm:block", children: [_jsx("p", { className: "font-display text-2xl font-semibold text-foreground", children: "+38%" }), _jsx("p", { className: "text-xs text-foreground-secondary", children: "avg. repeat orders" })] })] })] }));
+}

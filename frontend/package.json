@@ -1,0 +1,22 @@
+{
+  "name": "loqal-frontend",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "vitest run",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "happy-dom": "^15.11.7",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "packageManager": "npm@10.0.0"
+}
