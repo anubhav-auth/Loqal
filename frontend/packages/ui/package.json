@@ -9,6 +9,10 @@
     ".": "./src/index.ts",
     "./globals.css": "./src/globals.css"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.0",
