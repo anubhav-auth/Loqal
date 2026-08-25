@@ -37,8 +37,29 @@ export class ApiClient {
 
   getTokens(): { accessToken: string | null; refreshToken: string | null } {
     return {
-      accessToken: this.accessToken,
-      refreshToken: this.refreshToken,
+      accessToken: this.getAccessToken(),
+      refreshToken: this.getRefreshToken(),
+    }
+  }
+
+  private getAccessToken(): string | null {
+    return typeof localStorage !== "undefined"
+      ? localStorage.getItem(ACCESS_TOKEN_KEY)
+      : this.accessToken
+  }
+
+  private getRefreshToken(): string | null {
+    return typeof localStorage !== "undefined"
+      ? localStorage.getItem(REFRESH_TOKEN_KEY)
+      : this.refreshToken
+  }
+
+  private clearTokens() {
+    this.accessToken = null
+    this.refreshToken = null
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      localStorage.removeItem(REFRESH_TOKEN_KEY)
     }
   }
 
@@ -59,19 +80,19 @@ export class ApiClient {
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json")
     }
-    if (this.accessToken) {
-      headers.set("Authorization", `Bearer ${this.accessToken}`)
+    if (this.getAccessToken()) {
+      headers.set("Authorization", `Bearer ${this.getAccessToken()}`)
     }
 
     const init: RequestInit = { ...options, headers }
 
     let response = await fetch(url, init)
 
-    if (response.status === 401 && this.refreshToken) {
+    if (response.status === 401 && this.getRefreshToken()) {
       const refreshed = await this.attemptRefresh()
       if (refreshed) {
-        if (this.accessToken) {
-          headers.set("Authorization", `Bearer ${this.accessToken}`)
+        if (this.getAccessToken()) {
+          headers.set("Authorization", `Bearer ${this.getAccessToken()}`)
         }
         response = await fetch(url, { ...init, headers })
       }
@@ -96,22 +117,23 @@ export class ApiClient {
   }
 
   private async attemptRefresh(): Promise<boolean> {
-    if (!this.refreshToken) return false
+    const refreshToken = this.getRefreshToken()
+    if (!refreshToken) return false
     try {
       const res = await fetch(this.buildUrl("/auth/refresh"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
+        body: JSON.stringify({ refreshToken }),
       })
-      if (!res.ok) return false
+      if (!res.ok) {
+        this.clearTokens()
+        return false
+      }
       const data = (await res.json()) as {
         accessToken: string
         refreshToken?: string
       }
-      this.setTokens(
-        data.accessToken,
-        data.refreshToken ?? this.refreshToken,
-      )
+      this.setTokens(data.accessToken, data.refreshToken ?? refreshToken)
       return true
     } catch {
       return false
